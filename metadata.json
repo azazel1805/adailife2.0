@@ -1,0 +1,8 @@
+{
+  "name": "ADAI Language Assistant 6.0",
+  "description": "An AI-powered assistant  General and Academic English learning.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
