@@ -221,57 +221,21 @@ const SpeakingSimulator: React.FC = () => {
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
                 callbacks: {
-                    // --- MODIFIED SECTION START ---
-                    // This callback now uses the reliable AnalyserNode and requestAnimationFrame
-                    // instead of the deprecated ScriptProcessorNode.
                     onopen: () => {
-                        console.log("Live session OPEN. Setting up AudioContext with AnalyserNode.");
-                        
-                        const stream = mediaStreamRef.current;
-                        if (!stream) {
-                            console.error("Media stream is not available!");
-                            setError("Microphone stream was lost. Please restart the simulation.");
-                            return;
-                        }
-
                         const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
                         inputAudioContextRef.current = inputCtx;
                         const source = inputCtx.createMediaStreamSource(stream);
-                        
-                        const analyser = inputCtx.createAnalyser();
-                        analyser.fftSize = 2048;
-                        const dataArray = new Float32Array(analyser.fftSize);
-                        source.connect(analyser);
+                        const processor = inputCtx.createScriptProcessor(4096, 1, 1);
+                        scriptProcessorRef.current = processor;
 
-                        let isProcessing = true;
-
-                        const processAudio = () => {
-                            if (!isProcessing) return;
-
-                            analyser.getFloatTimeDomainData(dataArray);
-
-                            const sumSquares = dataArray.reduce((sum, val) => sum + val * val, 0);
-                            if (sumSquares > 0.001) { // Threshold to detect non-silence
-                                const pcmBlob = createBlob(new Float32Array(dataArray));
-                                sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-                            }
-
-                            requestAnimationFrame(processAudio);
+                        processor.onaudioprocess = (audioEvent) => {
+                            const inputData = audioEvent.inputBuffer.getChannelData(0);
+                            const pcmBlob = createBlob(inputData);
+                            sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
                         };
-
-                        processAudio();
-
-                        // This mock object allows our existing cleanup function to work
-                        // by providing a `disconnect` method that stops the loop.
-                        scriptProcessorRef.current = {
-                            disconnect: () => {
-                                console.log("Stopping audio processing loop.");
-                                isProcessing = false;
-                            }
-                        };
+                        source.connect(processor);
+                        processor.connect(inputCtx.destination);
                     },
-                    // --- MODIFIED SECTION END ---
-
                     onmessage: async (message: LiveServerMessage) => {
                         // Handle user's transcription
                         if (message.serverContent?.inputTranscription) {
@@ -279,8 +243,10 @@ const SpeakingSimulator: React.FC = () => {
                             setConversation(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last?.speaker === 'user') {
+                                    // Append to existing user message
                                     return [...prev.slice(0, -1), { ...last, text: last.text + text }];
                                 }
+                                // Start a new user message
                                 return [...prev, { speaker: 'user', text }];
                             });
                         }
@@ -290,8 +256,10 @@ const SpeakingSimulator: React.FC = () => {
                             setConversation(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last?.speaker === 'ai') {
+                                    // Append to existing AI message
                                     return [...prev.slice(0, -1), { ...last, text: last.text + text }];
                                 }
+                                // Start a new AI message (the user's turn must be over)
                                 return [...prev, { speaker: 'ai', text }];
                             });
                         }
