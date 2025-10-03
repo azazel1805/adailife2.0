@@ -353,7 +353,7 @@ const SpeakingSimulator: React.FC = () => {
     };
 
     const renderActive = () => (
-         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 flex flex-col h-[calc(100vh-12rem)] max-h-[700px]">
+         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 flex flex-col h-[calc(100vh-10rem)] max-h-[800px]">
              <h2 className="text-xl font-bold mb-2 text-adai-primary flex-shrink-0">{selectedScenario?.title}</h2>
              <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex-shrink-0">
                  <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 mb-2">🎯 Your Objectives:</h4>
@@ -366,7 +366,7 @@ const SpeakingSimulator: React.FC = () => {
                      <div key={i} className={`flex items-end gap-2 ${msg.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
                          {msg.speaker === 'ai' && <span className="text-2xl">🤖</span>}
                          <div className={`max-w-md p-3 rounded-2xl ${msg.speaker === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
-                             <p className="text-sm">{msg.text}</p>
+                             <p className="text-base leading-relaxed">{msg.text}</p>
                          </div>
                           {msg.speaker === 'user' && <span className="text-2xl">👤</span>}
                      </div>
@@ -374,7 +374,7 @@ const SpeakingSimulator: React.FC = () => {
                  {interimTranscript && (
                     <div className="flex items-end gap-2 justify-end">
                         <div className="max-w-md p-3 rounded-2xl bg-blue-500 text-white rounded-br-none opacity-60">
-                            <p className="text-sm italic">{interimTranscript}</p>
+                            <p className="text-base italic">{interimTranscript}</p>
                         </div>
                         <span className="text-2xl">👤</span>
                     </div>
