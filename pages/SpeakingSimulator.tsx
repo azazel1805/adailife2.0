@@ -316,9 +316,9 @@ const SpeakingSimulator: React.FC = () => {
     
     // --- Render Functions ---
     const renderSelection = () => (
-        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold mb-2 text-text-primary">Konuşma Simülatörü 🎭</h2>
-            <p className="mb-4 text-text-secondary">Pratik yapmak istediğiniz bir senaryo seçin.</p>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Konuşma Simülatörü 🎭</h2>
+            <p className="mb-4 text-slate-500 dark:text-slate-400">Pratik yapmak istediğiniz bir senaryo seçin.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {scenarios.map(s => (
                     <button key={s.id} onClick={() => { setSelectedScenario(s); setSimulatorState('briefing'); }}
@@ -337,7 +337,7 @@ const SpeakingSimulator: React.FC = () => {
     const renderBriefing = () => {
         if (!selectedScenario) return null;
         return (
-            <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
                 <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario.title}</h2>
                 <div className="space-y-4 my-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     <p><strong>🤖 AI Rolü:</strong> {selectedScenario.aiRole}</p>
@@ -362,7 +362,7 @@ const SpeakingSimulator: React.FC = () => {
     };
 
     const renderActive = () => (
-         <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
+         <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
              <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario?.title}</h2>
              <div className="h-80 bg-gray-100 dark:bg-gray-700 rounded-lg p-4 overflow-y-auto space-y-3 mb-4">
                  {conversation.map((msg, i) => (
@@ -385,7 +385,7 @@ const SpeakingSimulator: React.FC = () => {
     );
     
     const renderReport = () => (
-        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg space-y-6 flex flex-col max-h-[calc(100vh-12rem)]">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg space-y-6 flex flex-col max-h-[calc(100vh-12rem)]">
             <div className="flex-shrink-0">
                 <h2 className="text-2xl font-bold text-brand-primary">Performans Raporu</h2>
             </div>
@@ -394,12 +394,12 @@ const SpeakingSimulator: React.FC = () => {
                     <div className="space-y-6 overflow-y-auto pr-4 flex-grow">
                         {/* Objective Completion */}
                         <div>
-                            <h3 className="text-lg font-semibold mb-2 text-text-primary">🎯 Hedef Tamamlama Durumu</h3>
+                            <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">🎯 Hedef Tamamlama Durumu</h3>
                             <ul className="space-y-2">
                                 {report.objectiveCompletion.map((obj, i) => (
                                     <li key={i} className={`p-3 rounded-md text-sm ${obj.completed ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
-                                        <span className={`font-bold ${obj.completed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{obj.completed ? '✅ Tamamlandı:' : '❌ Tamamlanmadı:'}</span> <span className="text-text-primary">{obj.objective}</span>
-                                        <p className="text-xs italic mt-1 text-text-secondary">Gerekçe: {obj.reasoning}</p>
+                                        <span className={`font-bold ${obj.completed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{obj.completed ? '✅ Tamamlandı:' : '❌ Tamamlanmadı:'}</span> <span className="text-slate-900 dark:text-slate-200">{obj.objective}</span>
+                                        <p className="text-xs italic mt-1 text-slate-500 dark:text-slate-400">Gerekçe: {obj.reasoning}</p>
                                     </li>
                                 ))}
                             </ul>
@@ -407,17 +407,17 @@ const SpeakingSimulator: React.FC = () => {
 
                         {/* Overall Feedback */}
                         <div>
-                            <h3 className="text-lg font-semibold mb-2 text-text-primary">💬 Genel Geri Bildirim</h3>
-                            <p className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-text-secondary">{report.overallFeedback}</p>
+                            <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">💬 Genel Geri Bildirim</h3>
+                            <p className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-slate-500 dark:text-slate-400">{report.overallFeedback}</p>
                         </div>
 
                         {/* Pronunciation Feedback */}
                         {report.pronunciationFeedback.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-text-primary">🗣️ Telaffuz İpuçları</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">🗣️ Telaffuz İpuçları</h3>
                                 <ul className="space-y-2">
                                     {report.pronunciationFeedback.map((item, i) => (
-                                        <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-text-secondary">
+                                        <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-slate-500 dark:text-slate-400">
                                             <strong className="text-purple-700 dark:text-purple-400">{item.word}:</strong> {item.feedback}
                                         </li>
                                     ))}
@@ -428,12 +428,12 @@ const SpeakingSimulator: React.FC = () => {
                         {/* Grammar Feedback */}
                         {report.grammarFeedback.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-text-primary">✍️ Dil Bilgisi Düzeltmeleri</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">✍️ Dil Bilgisi Düzeltmeleri</h3>
                                 <ul className="space-y-2">
                                     {report.grammarFeedback.map((item, i) => (
                                         <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
-                                            <p className="text-text-primary"><span className="text-red-600 dark:text-red-400 line-through">{item.error}</span> &rarr; <span className="text-green-600 dark:text-green-400 font-semibold">{item.correction}</span></p>
-                                            <p className="text-xs text-text-secondary mt-1">Açıklama: {item.explanation}</p>
+                                            <p className="text-slate-900 dark:text-slate-200"><span className="text-red-600 dark:text-red-400 line-through">{item.error}</span> &rarr; <span className="text-green-600 dark:text-green-400 font-semibold">{item.correction}</span></p>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Açıklama: {item.explanation}</p>
                                         </li>
                                     ))}
                                 </ul>
@@ -443,19 +443,19 @@ const SpeakingSimulator: React.FC = () => {
                         {/* Vocabulary Suggestions */}
                         {report.vocabularySuggestions.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-text-primary">💡 Kelime Önerileri</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">💡 Kelime Önerileri</h3>
                                 <ul className="space-y-2">
                                     {report.vocabularySuggestions.map((item, i) => (
                                         <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
-                                            <p className="text-text-primary">'{item.original}' yerine '{item.suggestion}' kullanabilirsin.</p>
-                                            <p className="text-xs text-text-secondary mt-1">Neden: {item.reason}</p>
+                                            <p className="text-slate-900 dark:text-slate-200">'{item.original}' yerine '{item.suggestion}' kullanabilirsin.</p>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Neden: {item.reason}</p>
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                         )}
                     </div>
-                ) : <div className="flex-grow flex items-center justify-center text-text-secondary"><p>Analiz edilecek yeterli konuşma verisi bulunamadı.</p></div>
+                ) : <div className="flex-grow flex items-center justify-center text-slate-500 dark:text-slate-400"><p>Analiz edilecek yeterli konuşma verisi bulunamadı.</p></div>
             )}
             <div className="flex-shrink-0 pt-4">
                 <button onClick={() => { setSimulatorState('selection'); setReport(null); setConversation([]); }}
