@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Chat, LiveServerMessage } from '@google/genai';
-import { GoogleGenAI, Modality, Blob } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 import { createTutorChatSession } from '../services/geminiService';
 import { ChatMessage } from '../types';
 import ErrorMessage from '../components/ErrorMessage';
@@ -12,6 +11,35 @@ interface AITutorProps {
     initialMessage?: string | null;
     onMessageSent?: () => void;
 }
+
+// FIX: Define a local type for the Gemini Blob structure as it's not exported from the library.
+type GeminiBlob = {
+  data: string;
+  mimeType: string;
+};
+
+
+// --- AudioWorklet Setup ---
+// This code runs in a separate, high-priority thread to process audio.
+const workletCode = `
+class AudioProcessor extends AudioWorkletProcessor {
+  process(inputs) {
+    const input = inputs[0];
+    if (input.length > 0) {
+      const channel = input[0];
+      if (channel) {
+        // Send the Float32Array data back to the main thread.
+        this.port.postMessage(channel);
+      }
+    }
+    return true; // Keep the processor alive.
+  }
+}
+registerProcessor('audio-processor', AudioProcessor);
+`;
+const workletBlob = new Blob([workletCode], { type: 'application/javascript' });
+const workletURL = URL.createObjectURL(workletBlob);
+
 
 const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
     // --- Shared State ---
@@ -34,14 +62,11 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
-    const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+    const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
+    const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const outputAudioSources = useRef<Set<AudioBufferSourceNode>>(new Set());
     const nextAudioStartTime = useRef<number>(0);
-    const conversationStateRef = useRef(conversationState);
-    useEffect(() => {
-        conversationStateRef.current = conversationState;
-    }, [conversationState]);
 
     // --- Audio Helper Functions ---
     const encode = (bytes: Uint8Array) => {
@@ -53,7 +78,7 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
         return btoa(binary);
     };
 
-    const createBlob = (data: Float32Array): Blob => {
+    const createBlob = (data: Float32Array): GeminiBlob => {
         const l = data.length;
         const int16 = new Int16Array(l);
         for (let i = 0; i < l; i++) {
@@ -88,34 +113,32 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
     
     // --- Live Session Cleanup ---
     const stopConversation = useCallback(() => {
-        if (conversationStateRef.current !== 'active') return;
+        if (conversationState !== 'active') return;
 
-        // Immediately update ref to prevent re-entry from rapid calls (e.g., from onerror and onclose)
-        conversationStateRef.current = 'idle';
-
-        // 1. Stop audio processing and mic input immediately to prevent new `sendRealtimeInput` calls.
-        scriptProcessorRef.current?.disconnect();
-        scriptProcessorRef.current = null;
-        mediaStreamRef.current?.getTracks().forEach(track => track.stop());
-        mediaStreamRef.current = null;
-
-        // 2. Now, it's safe to close the session.
-        sessionPromiseRef.current?.then(session => session.close());
-        sessionPromiseRef.current = null;
+        // 1. Shut down the audio pipeline first to stop sending data.
+        audioWorkletNodeRef.current?.disconnect();
+        mediaStreamSourceRef.current?.disconnect();
+        audioWorkletNodeRef.current = null;
+        mediaStreamSourceRef.current = null;
     
-        // 3. Clean up audio contexts and output sources.
         inputAudioContextRef.current?.close().catch(console.error);
         inputAudioContextRef.current = null;
+        mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
     
         outputAudioSources.current.forEach(source => source.stop());
         outputAudioSources.current.clear();
         outputAudioContextRef.current?.close().catch(console.error);
         outputAudioContextRef.current = null;
         nextAudioStartTime.current = 0;
+        
+        // 2. Now, close the WebSocket session.
+        sessionPromiseRef.current?.then(session => session.close());
+        sessionPromiseRef.current = null;
     
-        // 4. Update the component state.
+        // 3. Finally, update the UI state.
         setConversationState('idle');
-    }, []);
+    }, [conversationState]);
 
     // --- Turkish Mode Logic ---
     useEffect(() => {
@@ -221,20 +244,31 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
                 callbacks: {
-                    onopen: () => {
+                    onopen: async () => {
                         const context = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
                         inputAudioContextRef.current = context;
-                        const source = context.createMediaStreamSource(stream);
-                        const processor = context.createScriptProcessor(4096, 1, 1);
-                        scriptProcessorRef.current = processor;
+                        
+                        try {
+                            await context.audioWorklet.addModule(workletURL);
 
-                        processor.onaudioprocess = (audioEvent) => {
-                            const inputData = audioEvent.inputBuffer.getChannelData(0);
-                            const pcmBlob = createBlob(inputData);
-                            sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-                        };
-                        source.connect(processor);
-                        processor.connect(context.destination);
+                            const source = context.createMediaStreamSource(stream);
+                            mediaStreamSourceRef.current = source;
+                            
+                            const processor = new AudioWorkletNode(context, 'audio-processor');
+                            audioWorkletNodeRef.current = processor;
+    
+                            processor.port.onmessage = (event) => {
+                                const inputData = event.data;
+                                const pcmBlob = createBlob(inputData);
+                                sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
+                            };
+                            source.connect(processor);
+                            processor.connect(context.destination);
+                        } catch (e) {
+                             console.error("Error setting up audio worklet:", e);
+                             setError('Audio processing setup failed.');
+                             stopConversation();
+                        }
                     },
                     onmessage: async (message: LiveServerMessage) => {
                         let currentInputTranscription = '';
