@@ -38,7 +38,7 @@ import VisualDictionary from '../pages/VisualDictionary';
 import Basics from '../pages/Basics';
 import Tenses from '../pages/Tenses';
 import Crossword from '../pages/Crossword';
-import GrammarGaps from './pages/GrammarGaps';
+import GrammarGaps from '../pages/GrammarGaps';
 
 
 
