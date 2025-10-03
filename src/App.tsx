@@ -137,7 +137,7 @@ const App: React.FC = () => {
         'reading': { id: 'reading', label: 'Okuma Anlama Analizi', icon: <ReadingIcon /> },
         'visual_reading': { id: 'visual_reading', label: 'Görsel Okuma', icon: <VisualReadingIcon /> },
         'writing': { id: 'writing', label: 'Yazma Pratiği', icon: <WritingIcon /> },
-        'creative_writing': { id: 'creative_writing', label: 'Creative Writing', icon: <CreativeWritingIcon /> },
+        'creative_writing': { id: 'creative_writing', label: 'Yaratıcı Yazarlık', icon: <CreativeWritingIcon /> },
         'listening': { id: 'listening', label: 'Dinleme Pratiği', icon: <ListeningIcon /> },
         'speaking_simulator': { id: 'speaking_simulator', label: 'Konuşma Simülatörü', icon: <SpeakingSimulatorIcon /> },
         'analyzer': { id: 'analyzer', label: 'Soru Analisti', icon: <AnalyzeIcon /> },
