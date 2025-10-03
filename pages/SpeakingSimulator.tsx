@@ -195,6 +195,8 @@ const SpeakingSimulator: React.FC = () => {
     const stopSimulation = useCallback(async () => {
         if (simulatorStateRef.current !== 'active') return;
         
+        // Immediately update ref to prevent re-entry from rapid calls (e.g., from onerror and onclose)
+        simulatorStateRef.current = 'processing_report';
         setSimulatorState('processing_report');
     
         // 1. Immediately stop audio processing to prevent new `sendRealtimeInput` calls
