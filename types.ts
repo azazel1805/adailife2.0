@@ -1,7 +1,7 @@
 
 
 
-export type Tab = 'dashboard' | 'planner' | 'analyzer' | 'tutor' | 'reading' | 'deconstruction' | 'diagrammer' | 'cohesion_analyzer' | 'writing' | 'listening' | 'news' | 'dictionary' | 'vocabulary' | 'history' | 'pdf_importer' | 'vocabulary_story_weaver' | 'skill_tree' | 'sentence_ordering' | 'speaking_simulator' | 'phrasal_verb_deconstructor' | 'admin' | 'translation_analyst' | 'dialogue_completion' | 'visual_reading' | 'creative_writing' | 'pragmatic_analyzer' | 'visual_dictionary' | 'basics' | 'tenses';
+export type Tab = 'dashboard' | 'planner' | 'analyzer' | 'tutor' | 'reading' | 'deconstruction' | 'diagrammer' | 'cohesion_analyzer' | 'writing' | 'listening' | 'news' | 'dictionary' | 'vocabulary' | 'history' | 'pdf_importer' | 'vocabulary_story_weaver' | 'skill_tree' | 'sentence_ordering' | 'speaking_simulator' | 'phrasal_verb_deconstructor' | 'admin' | 'translation_analyst' | 'dialogue_completion' | 'visual_reading' | 'creative_writing' | 'pragmatic_analyzer' | 'visual_dictionary' | 'basics' | 'tenses' | 'crossword';
 
 export interface AnalysisResult {
   soruTipi?: string;
@@ -474,4 +474,26 @@ export interface AffixData {
     word: string;
     definition: string;
   }[];
+}
+
+// Types for Crossword
+export interface CrosswordClue {
+    number: number;
+    clue: string; // Turkish meaning
+    answer: string; // English word
+    row: number;
+    col: number;
+    direction: 'across' | 'down';
+}
+
+export interface CrosswordData {
+    grid: (string | null)[][];
+    clues: {
+        across: CrosswordClue[];
+        down: CrosswordClue[];
+    };
+    size: {
+        rows: number;
+        cols: number;
+    };
 }
