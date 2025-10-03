@@ -9,7 +9,10 @@ import { ChatMessage } from '../types';
 import ErrorMessage from '../components/ErrorMessage';
 import { SendIcon } from '../components/icons/Icons';
 import { useChallenge } from '../context/ChallengeContext';
-
+type GeminiBlob = {
+  data: string;
+  mimeType: string;
+};
 interface AITutorProps {
     initialMessage?: string | null;
     onMessageSent?: () => void;
