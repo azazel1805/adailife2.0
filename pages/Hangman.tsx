@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { hangmanWords } from '../data/hangmanWords';
+import { hangmanWords, HangmanWord } from '../data/hangmanWords';
 import { DIFFICULTY_LEVELS } from '../constants';
 
 const HANGMAN_PARTS = [
@@ -17,21 +17,25 @@ const Hangman: React.FC = () => {
     const [gameState, setGameState] = useState<'setup' | 'playing' | 'won' | 'lost'>('setup');
     const [difficulty, setDifficulty] = useState<string>(DIFFICULTY_LEVELS[1]);
     const [wordToGuess, setWordToGuess] = useState('');
+    const [wordDefinition, setWordDefinition] = useState('');
     const [guessedLetters, setGuessedLetters] = useState<Set<string>>(new Set());
     const [hintUsed, setHintUsed] = useState(false);
+    const [showHint, setShowHint] = useState(false);
     
     const incorrectGuesses = [...guessedLetters].filter(letter => !wordToGuess.includes(letter)).length;
 
-    const chooseWord = useCallback((level: string): string => {
+    const chooseWord = useCallback((level: string): HangmanWord => {
         const wordList = hangmanWords[level];
         return wordList[Math.floor(Math.random() * wordList.length)];
     }, []);
 
     const startGame = useCallback(() => {
-        const newWord = chooseWord(difficulty);
-        setWordToGuess(newWord);
+        const newWordData = chooseWord(difficulty);
+        setWordToGuess(newWordData.word);
+        setWordDefinition(newWordData.definition);
         setGuessedLetters(new Set());
         setHintUsed(false);
+        setShowHint(false);
         setGameState('playing');
     }, [difficulty, chooseWord]);
 
@@ -53,16 +57,8 @@ const Hangman: React.FC = () => {
 
     const handleHint = () => {
         if (gameState !== 'playing' || hintUsed) return;
-
-        const unguessedLetters = wordToGuess
-            .split('')
-            .filter(letter => !guessedLetters.has(letter));
-        
-        if (unguessedLetters.length > 0) {
-            const hintLetter = unguessedLetters[Math.floor(Math.random() * unguessedLetters.length)];
-            setGuessedLetters(prev => new Set(prev).add(hintLetter));
-            setHintUsed(true);
-        }
+        setShowHint(true);
+        setHintUsed(true);
     };
     
     const handlePlayAgain = () => {
@@ -157,6 +153,11 @@ const Hangman: React.FC = () => {
                         >
                             💡 Hint (1 per game)
                         </button>
+                        {showHint && (
+                            <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-400 text-yellow-800 dark:text-yellow-200 rounded-r-lg animate-fade-in">
+                                <p><strong>Hint:</strong> {wordDefinition}</p>
+                            </div>
+                        )}
                     </div>
                     {renderKeyboard()}
                 </div>
