@@ -148,7 +148,7 @@ const App: React.FC = () => {
          'crossword': { id: 'crossword', label: 'Kelime Bulmaca', icon: <CrosswordIcon /> },
          'grammar_gaps': { id: 'grammar_gaps', label: 'Dilbilgisel Boşluklar', icon: <GrammarGapsIcon /> },
         'hangman': { id: 'hangman', label: 'Adam Asmaca', icon: <HangmanIcon /> },
-        'word_sprint': { id: 'word_sprint', label: 'Word Sprint', icon: <WordSprintIcon /> },
+        'word_sprint': { id: 'word_sprint', label: 'Kelime Maratonu', icon: <WordSprintIcon /> },
         'admin': { id: 'admin', label: 'Admin Panel', icon: <AdminIcon /> },
     };
 
