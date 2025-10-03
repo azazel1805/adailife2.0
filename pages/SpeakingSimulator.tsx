@@ -215,24 +215,34 @@ const SpeakingSimulator: React.FC = () => {
     };
     
     const stopSimulation = async () => {
-        if (simulatorState !== 'active') return;
+        if (simulatorState !== 'active' && simulatorState !== 'processing_report') return;
         
-        setSimulatorState('processing_report');
-        sessionPromiseRef.current?.then(session => session.close());
+        // Ensure state is set to processing for UI feedback
+        if (simulatorState === 'active') {
+            setSimulatorState('processing_report');
+        }
+        
+        // 1. Clean up the audio pipeline first to stop sending data.
         cleanupAudio();
         
+        // 2. Now, close the WebSocket session.
+        sessionPromiseRef.current?.then(session => session.close());
+        sessionPromiseRef.current = null;
+        
         try {
-            if (conversation.length > 1) { // Need more than just the AI's welcome
+            // Only generate a report if there was actual interaction
+            if (conversation.length > 1) { 
                 const reportText = await analyzeConversationForReport(selectedScenario!, conversation);
                 const reportJson: PerformanceReport = JSON.parse(reportText);
                 setReport(reportJson);
                 trackAction('speaking_simulator');
             } else {
-                setReport(null); // No report if no interaction
+                setReport(null); 
             }
         } catch (e: any) {
             setError(e.message || 'An error occurred while generating the analysis report.');
         } finally {
+            // Ensure state transitions to report view even if report generation fails
             setSimulatorState('report');
         }
     };
@@ -332,7 +342,9 @@ const SpeakingSimulator: React.FC = () => {
                     },
                     onclose: (e: CloseEvent) => {
                         console.debug('Live session closed.');
-                        cleanupAudio();
+                        // The stopSimulation function handles cleanup and UI state updates.
+                        // The check inside stopSimulation prevents it from running more than once.
+                        stopSimulation();
                     },
                 },
                 config: {
