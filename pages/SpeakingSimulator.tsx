@@ -305,12 +305,12 @@ const SpeakingSimulator: React.FC = () => {
     );
 
 
-    return (
+     return (
         <div className="max-w-4xl mx-auto space-y-6">
             <ErrorMessage message={error} />
             {simulatorState === 'selection' && renderSelection()}
             {simulatorState === 'briefing' && renderBriefing()}
-            {(simulatorState === 'active') && renderActive()}
+            {simulatorState === 'active' && renderActive()}
             {(simulatorState === 'processing_report' || simulatorState === 'report') && renderReport()}
         </div>
     );
