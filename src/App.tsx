@@ -41,6 +41,8 @@ import Crossword from '../pages/Crossword';
 import GrammarGaps from '../pages/GrammarGaps';
 import Hangman from '../pages/Hangman';
 import WordSprint from '../pages/WordSprint';
+import ConceptWeaver from '../pages/ConceptWeaver';
+
 
 
 
@@ -48,7 +50,7 @@ import WordSprint from '../pages/WordSprint';
 
 // Components
 import WelcomeTour from '/components/WelcomeTour';
-import { AnalyzeIcon, GamesIcon, DictionaryIcon, HistoryIcon, DashboardIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, BasicsIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon } from '/components/icons/Icons';
+import { AnalyzeIcon, GamesIcon, DictionaryIcon, HistoryIcon, DashboardIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, BasicsIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon } from '/components/icons/Icons';
 
 // Hooks & Types
 import useLocalStorage from '/hooks/useLocalStorage';
@@ -149,6 +151,7 @@ const App: React.FC = () => {
          'grammar_gaps': { id: 'grammar_gaps', label: 'Dilbilgisel Boşluklar', icon: <GrammarGapsIcon /> },
         'hangman': { id: 'hangman', label: 'Adam Asmaca', icon: <HangmanIcon /> },
         'word_sprint': { id: 'word_sprint', label: 'Kelime Maratonu', icon: <WordSprintIcon /> },
+        'concept_weaver': { id: 'concept_weaver', label: 'Kavram Dokuyucu', icon: <ConceptWeaverIcon /> },
         'admin': { id: 'admin', label: 'Admin Panel', icon: <AdminIcon /> },
     };
 
@@ -156,7 +159,7 @@ const App: React.FC = () => {
     main: ['dashboard', 'skill_tree', 'planner', 'tutor'],
     accordions: [
       { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['basics', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator', 'word_sprint'] },
-      { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint'] },
+      { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint', 'concept_weaver'] },
       { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
       { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
       { key: 'focused_analysis', label: "Odaklı Analiz", icon: <ExamIcon />, tabs: ['analyzer', 'reading', 'cohesion_analyzer', 'sentence_ordering', 'dialogue_completion', 'pdf_importer'] },
@@ -288,6 +291,7 @@ const App: React.FC = () => {
             case 'grammar_gaps': return <GrammarGaps />;
             case 'hangman': return <Hangman />;
             case 'word_sprint': return <WordSprint />;
+            case 'concept_weaver': return <ConceptWeaver />;
             case 'history': return <History />;
             case 'admin': return user?.email === 'admin@example.com' ? <AdminPage /> : <Dashboard onNavigate={handleTabClick} />;
             default: return <Dashboard onNavigate={handleTabClick} />;
