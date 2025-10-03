@@ -41,6 +41,26 @@ const scenarios: Scenario[] = [
         ]
     },
     {
+        id: 'meeting_new_person',
+        title: 'Meeting Someone New',
+        description: 'Introduce yourself to someone at a party and make small talk.',
+        difficulty: 'Kolay',
+        userRole: 'a guest at a party',
+        aiRole: 'another friendly guest at the same party',
+        aiWelcome: "Hi there! I don't think we've met. I'm Alex.",
+        objectives: ["Say your name.", "Ask what they do for a living.", "Tell them what you do.", "Say it was nice meeting them."]
+    },
+    {
+        id: 'buy_train_ticket',
+        title: 'Buying a Train Ticket',
+        description: 'Go to a train station ticket counter to buy a ticket for a trip.',
+        difficulty: 'Kolay',
+        userRole: 'a traveler buying a ticket',
+        aiRole: 'a ticket agent at a train station',
+        aiWelcome: "Hello, where can I help you travel to today?",
+        objectives: ["Say you want one ticket to Manchester.", "Ask what time the next train leaves.", "Ask which platform it leaves from.", "Say you will pay by card."]
+    },
+    {
         id: 'return_item',
         title: 'Returning an Item',
         description: 'Try to return a newly bought but faulty electronic item to the store.',
@@ -71,6 +91,26 @@ const scenarios: Scenario[] = [
         ]
     },
     {
+        id: 'doctor_appointment',
+        title: "Making a Doctor's Appointment",
+        description: "Call a doctor's office to schedule an appointment for a check-up.",
+        difficulty: 'Orta',
+        userRole: 'a patient calling a clinic',
+        aiRole: 'a receptionist at a doctor\'s office',
+        aiWelcome: "Good morning, Dr. Smith's office. How may I help you?",
+        objectives: ["Say you'd like to make an appointment with Dr. Smith.", "Explain it's for a general check-up.", "Ask for an appointment next week in the afternoon.", "Confirm the appointment time and date."]
+    },
+    {
+        id: 'meal_complaint',
+        title: 'Meal Complaint at a Restaurant',
+        description: 'You received the wrong order at a restaurant. Politely inform the waiter about the issue.',
+        difficulty: 'Orta',
+        userRole: 'a customer at a restaurant',
+        aiRole: 'a waiter at the restaurant',
+        aiWelcome: "Is everything alright with your meal?",
+        objectives: ["Get the waiter's attention politely.", "Explain that this isn't what you ordered.", "Tell the waiter what you actually ordered (e.g., the steak).", "Ask how long it will take to get the correct dish."]
+    },
+    {
         id: 'job_interview',
         title: 'Job Interview Simulation',
         description: 'Conduct a basic job interview for a software engineer position.',
@@ -99,6 +139,26 @@ const scenarios: Scenario[] = [
             "Mention one potential concern about AI.",
             "Ask your friend for their opinion on the future of AI."
         ]
+    },
+    {
+        id: 'negotiate_price',
+        title: 'Negotiating a Price',
+        description: "You're at a souvenir market and want to buy an item. Try to negotiate for a better price with the seller.",
+        difficulty: 'Zor',
+        userRole: 'a tourist trying to get a good deal',
+        aiRole: 'a market vendor',
+        aiWelcome: "Hello! Welcome to my shop! See anything you like? This vase is beautiful, isn't it?",
+        objectives: ["Ask for the price of an item (e.g., the vase).", "Say the price is a bit too high for you.", "Make a counter-offer that is lower than the asking price.", "Try to agree on a final price."]
+    },
+    {
+        id: 'social_media_debate',
+        title: 'Debate: Social Media',
+        description: 'Participate in a friendly debate about the pros and cons of social media.',
+        difficulty: 'Zor',
+        userRole: 'a person with an opinion on social media',
+        aiRole: 'a debate partner with an opposing view',
+        aiWelcome: "Alright, let's discuss this. I personally think social media has been overwhelmingly positive for society. What's your take?",
+        objectives: ["State your main opinion (whether it's good or bad).", "Give one reason to support your opinion.", "Acknowledge the opposing view but offer a counter-argument.", "Conclude your point gracefully."]
     }
 ];
 
@@ -294,7 +354,13 @@ const SpeakingSimulator: React.FC = () => {
 
     const renderActive = () => (
          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 flex flex-col h-[calc(100vh-12rem)] max-h-[700px]">
-             <h2 className="text-xl font-bold mb-4 text-adai-primary flex-shrink-0">{selectedScenario?.title}</h2>
+             <h2 className="text-xl font-bold mb-2 text-adai-primary flex-shrink-0">{selectedScenario?.title}</h2>
+             <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex-shrink-0">
+                 <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 mb-2">🎯 Your Objectives:</h4>
+                 <ul className="list-disc list-inside space-y-1 text-xs text-slate-600 dark:text-slate-400">
+                     {selectedScenario?.objectives.map((obj, i) => <li key={i}>{obj}</li>)}
+                 </ul>
+             </div>
              <div className="h-full bg-slate-100 dark:bg-slate-800 rounded-lg p-4 overflow-y-auto space-y-3 mb-4 flex-grow">
                  {conversation.map((msg, i) => (
                      <div key={i} className={`flex items-end gap-2 ${msg.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
