@@ -8,10 +8,8 @@ import { useChallenge } from '../context/ChallengeContext';
 import { SpeakerIcon, StopIcon } from '../components/icons/Icons';
 
 type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' | 'report';
-type ConnectionStatus = 'idle' | 'connecting' | 'open' | 'closed';
-// NEW: Define a type for our connection statusimport React, { useState, useRef, useEffect } from 'react';
 
-// --- Static Scenario Data (no changes) ---
+// --- Static Scenario Data ---
 const scenarios: Scenario[] = [
     {
         id: 'cafe_order',
@@ -113,18 +111,16 @@ const SpeakingSimulator: React.FC = () => {
     const [error, setError] = useState('');
     const { trackAction } = useChallenge();
 
-    // --- Audio & Live API Refs (no changes) ---
+    // --- Audio & Live API Refs ---
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
-    const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
+    const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const outputAudioSources = useRef<Set<AudioBufferSourceNode>>(new Set());
     const nextAudioStartTime = useRef<number>(0);
 
-    const connectionStatusRef = useRef<ConnectionStatus>('idle');
-
-    // --- Audio Helper Functions (no changes) ---
+    // --- Audio Helper Functions (from guidelines) ---
     const encode = (bytes: Uint8Array) => {
         let binary = '';
         const len = bytes.byteLength;
@@ -138,7 +134,9 @@ const SpeakingSimulator: React.FC = () => {
         const l = data.length;
         const int16 = new Int16Array(l);
         for (let i = 0; i < l; i++) {
+            // Clamp the value to the [-1.0, 1.0] range to ensure it's valid.
             const s = Math.max(-1, Math.min(1, data[i]));
+            // Convert to 16-bit signed integer.
             int16[i] = s < 0 ? s * 32768 : s * 32767;
         }
         return { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' };
@@ -168,32 +166,18 @@ const SpeakingSimulator: React.FC = () => {
       return buffer;
     }
 
-    // --- Cleanup Functions (no changes) ---
-     const cleanupAudio = () => {
-        // CRITICAL: Set the status to closed FIRST. This acts as a flag for all other async operations to stop.
-        connectionStatusRef.current = 'closed';
-
-        if (audioWorkletNodeRef.current) {
-            audioWorkletNodeRef.current.port.onmessage = null;
-            audioWorkletNodeRef.current.port.close();
-            audioWorkletNodeRef.current.disconnect();
-            audioWorkletNodeRef.current = null;
-        }
-
-        if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
-            inputAudioContextRef.current.close().catch(console.error);
-        }
+    // --- Cleanup Functions ---
+    const cleanupAudio = () => {
+        scriptProcessorRef.current?.disconnect();
+        scriptProcessorRef.current = null;
+        inputAudioContextRef.current?.close();
         inputAudioContextRef.current = null;
-
         mediaStreamRef.current?.getTracks().forEach(track => track.stop());
         mediaStreamRef.current = null;
         
         outputAudioSources.current.forEach(source => source.stop());
         outputAudioSources.current.clear();
-        
-        if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') {
-            outputAudioContextRef.current.close().catch(console.error);
-        }
+        outputAudioContextRef.current?.close();
         outputAudioContextRef.current = null;
         nextAudioStartTime.current = 0;
     };
@@ -201,21 +185,18 @@ const SpeakingSimulator: React.FC = () => {
     const stopSimulation = async () => {
         if (simulatorState !== 'active') return;
         
-        // Also set status here to be extra safe
-        connectionStatusRef.current = 'closed';
         setSimulatorState('processing_report');
-        
         sessionPromiseRef.current?.then(session => session.close());
         cleanupAudio();
         
         try {
-            if (conversation.length > 1) {
+            if (conversation.length > 1) { // Need more than just the AI's welcome
                 const reportText = await analyzeConversationForReport(selectedScenario!, conversation);
                 const reportJson: PerformanceReport = JSON.parse(reportText);
                 setReport(reportJson);
                 trackAction('speaking_simulator');
             } else {
-                setReport(null);
+                setReport(null); // No report if no interaction
             }
         } catch (e: any) {
             setError(e.message || 'An error occurred while generating the analysis report.');
@@ -227,18 +208,12 @@ const SpeakingSimulator: React.FC = () => {
     const startSimulation = async () => {
         if (!selectedScenario) return;
 
-        // Reset state for a new session
-        cleanupAudio();
         setConversation([{ speaker: 'ai', text: selectedScenario.aiWelcome }]);
         setSimulatorState('active');
         setError('');
-        connectionStatusRef.current = 'connecting'; // Set status
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-            // NEW CHECK: If cleanup was called while waiting for mic permission, abort.
-            if (connectionStatusRef.current !== 'connecting') return;
             mediaStreamRef.current = stream;
 
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -246,77 +221,56 @@ const SpeakingSimulator: React.FC = () => {
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
                 callbacks: {
-                    onopen: async () => {
-                        // CRITICAL CHECK: Abort if cleanup has been called while connecting.
-                        if (connectionStatusRef.current !== 'connecting') {
-                            console.log("Aborting audio setup: connection status is no longer 'connecting'.");
-                            return;
-                        }
-                        connectionStatusRef.current = 'open'; // We are officially open!
+                    onopen: () => {
+                        const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+                        inputAudioContextRef.current = inputCtx;
+                        const source = inputCtx.createMediaStreamSource(stream);
+                        const processor = inputCtx.createScriptProcessor(4096, 1, 1);
+                        scriptProcessorRef.current = processor;
 
-                        try {
-                            const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-                            inputAudioContextRef.current = inputCtx;
-
-                            await inputCtx.audioWorklet.addModule('/pcm-processor.js');
-
-                            if (inputCtx.state === 'closed') {
-                                console.log("Aborting audio setup: context has been closed.");
-                                return;
-                            }
-                            
-                            const source = inputCtx.createMediaStreamSource(stream);
-                            const pcmWorkletNode = new AudioWorkletNode(inputCtx, 'pcm-processor');
-                            audioWorkletNodeRef.current = pcmWorkletNode;
-
-                            pcmWorkletNode.port.onmessage = (event) => {
-                                // CRITICAL CHECK: Only send data if the connection is fully open.
-                                if (connectionStatusRef.current === 'open') {
-                                    const pcmData = event.data;
-                                    const pcmBlob = createBlob(pcmData);
-                                    sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-                                }
-                            };
-                            
-                            source.connect(pcmWorkletNode);
-                            pcmWorkletNode.connect(inputCtx.destination);
-                            
-                        } catch (workletError) {
-                            console.error('Error setting up AudioWorklet:', workletError);
-                            setError('Failed to initialize audio processor.');
-                            stopSimulation();
-                        }
+                        processor.onaudioprocess = (audioEvent) => {
+                            const inputData = audioEvent.inputBuffer.getChannelData(0);
+                            const pcmBlob = createBlob(inputData);
+                            sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
+                        };
+                        source.connect(processor);
+                        processor.connect(inputCtx.destination);
                     },
                     onmessage: async (message: LiveServerMessage) => {
-                        // (No changes in this block)
+                        // Handle user's transcription
                         if (message.serverContent?.inputTranscription) {
                             const text = message.serverContent.inputTranscription.text;
                             setConversation(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last?.speaker === 'user') {
+                                    // Append to existing user message
                                     return [...prev.slice(0, -1), { ...last, text: last.text + text }];
                                 }
+                                // Start a new user message
                                 return [...prev, { speaker: 'user', text }];
                             });
                         }
+                        // Handle AI's transcription
                         else if (message.serverContent?.outputTranscription) {
                             const text = message.serverContent.outputTranscription.text;
                             setConversation(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last?.speaker === 'ai') {
+                                    // Append to existing AI message
                                     return [...prev.slice(0, -1), { ...last, text: last.text + text }];
                                 }
+                                // Start a new AI message (the user's turn must be over)
                                 return [...prev, { speaker: 'ai', text }];
                             });
                         }
                         
+                        // Handle AI's audio output
                         const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
                         if (audioData) {
                             if (!outputAudioContextRef.current) {
                                 outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
                             }
                             const ctx = outputAudioContextRef.current;
-                            if (ctx.state === 'closed') return; // Defensive check for output context
                             nextAudioStartTime.current = Math.max(nextAudioStartTime.current, ctx.currentTime);
                             const audioBuffer = await decodeAudioData(decode(audioData), ctx, 24000, 1);
                             const source = ctx.createBufferSource();
@@ -333,7 +287,7 @@ const SpeakingSimulator: React.FC = () => {
                         setError('A conversation session error occurred. Ending session automatically.');
                         stopSimulation();
                     },
-                    onclose: () => {
+                    onclose: (e: CloseEvent) => {
                         console.debug('Live session closed.');
                         cleanupAudio();
                     },
@@ -347,12 +301,12 @@ const SpeakingSimulator: React.FC = () => {
             });
 
         } catch (err) {
-            console.error("Error starting simulation: ", err);
             setError('Mikrofon erişimi reddedildi veya bulunamadı. Lütfen tarayıcı ayarlarınızı kontrol edin.');
             setSimulatorState('briefing');
         }
     };
     
+     // Cleanup on unmount
     useEffect(() => {
         return () => {
             sessionPromiseRef.current?.then(session => session.close());
@@ -360,11 +314,11 @@ const SpeakingSimulator: React.FC = () => {
         }
     }, []);
     
-    // --- Render Functions (No changes below this line) ---
+    // --- Render Functions ---
     const renderSelection = () => (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Konuşma Simülatörü 🎭</h2>
-            <p className="mb-4 text-slate-500 dark:text-slate-400">Pratik yapmak istediğiniz bir senaryo seçin.</p>
+        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold mb-2 text-text-primary">Konuşma Simülatörü 🎭</h2>
+            <p className="mb-4 text-text-secondary">Pratik yapmak istediğiniz bir senaryo seçin.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {scenarios.map(s => (
                     <button key={s.id} onClick={() => { setSelectedScenario(s); setSimulatorState('briefing'); }}
@@ -383,7 +337,7 @@ const SpeakingSimulator: React.FC = () => {
     const renderBriefing = () => {
         if (!selectedScenario) return null;
         return (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
+            <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
                 <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario.title}</h2>
                 <div className="space-y-4 my-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     <p><strong>🤖 AI Rolü:</strong> {selectedScenario.aiRole}</p>
@@ -408,7 +362,7 @@ const SpeakingSimulator: React.FC = () => {
     };
 
     const renderActive = () => (
-         <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
+         <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
              <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario?.title}</h2>
              <div className="h-80 bg-gray-100 dark:bg-gray-700 rounded-lg p-4 overflow-y-auto space-y-3 mb-4">
                  {conversation.map((msg, i) => (
@@ -431,7 +385,7 @@ const SpeakingSimulator: React.FC = () => {
     );
     
     const renderReport = () => (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg space-y-6 flex flex-col max-h-[calc(100vh-12rem)]">
+        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg space-y-6 flex flex-col max-h-[calc(100vh-12rem)]">
             <div className="flex-shrink-0">
                 <h2 className="text-2xl font-bold text-brand-primary">Performans Raporu</h2>
             </div>
@@ -440,12 +394,12 @@ const SpeakingSimulator: React.FC = () => {
                     <div className="space-y-6 overflow-y-auto pr-4 flex-grow">
                         {/* Objective Completion */}
                         <div>
-                            <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">🎯 Hedef Tamamlama Durumu</h3>
+                            <h3 className="text-lg font-semibold mb-2 text-text-primary">🎯 Hedef Tamamlama Durumu</h3>
                             <ul className="space-y-2">
                                 {report.objectiveCompletion.map((obj, i) => (
                                     <li key={i} className={`p-3 rounded-md text-sm ${obj.completed ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
-                                        <span className={`font-bold ${obj.completed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{obj.completed ? '✅ Tamamlandı:' : '❌ Tamamlanmadı:'}</span> <span className="text-slate-900 dark:text-slate-200">{obj.objective}</span>
-                                        <p className="text-xs italic mt-1 text-slate-500 dark:text-slate-400">Gerekçe: {obj.reasoning}</p>
+                                        <span className={`font-bold ${obj.completed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{obj.completed ? '✅ Tamamlandı:' : '❌ Tamamlanmadı:'}</span> <span className="text-text-primary">{obj.objective}</span>
+                                        <p className="text-xs italic mt-1 text-text-secondary">Gerekçe: {obj.reasoning}</p>
                                     </li>
                                 ))}
                             </ul>
@@ -453,17 +407,17 @@ const SpeakingSimulator: React.FC = () => {
 
                         {/* Overall Feedback */}
                         <div>
-                            <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">💬 Genel Geri Bildirim</h3>
-                            <p className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-slate-500 dark:text-slate-400">{report.overallFeedback}</p>
+                            <h3 className="text-lg font-semibold mb-2 text-text-primary">💬 Genel Geri Bildirim</h3>
+                            <p className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-text-secondary">{report.overallFeedback}</p>
                         </div>
 
                         {/* Pronunciation Feedback */}
                         {report.pronunciationFeedback.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">🗣️ Telaffuz İpuçları</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-text-primary">🗣️ Telaffuz İpuçları</h3>
                                 <ul className="space-y-2">
                                     {report.pronunciationFeedback.map((item, i) => (
-                                        <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-slate-500 dark:text-slate-400">
+                                        <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-text-secondary">
                                             <strong className="text-purple-700 dark:text-purple-400">{item.word}:</strong> {item.feedback}
                                         </li>
                                     ))}
@@ -474,12 +428,12 @@ const SpeakingSimulator: React.FC = () => {
                         {/* Grammar Feedback */}
                         {report.grammarFeedback.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">✍️ Dil Bilgisi Düzeltmeleri</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-text-primary">✍️ Dil Bilgisi Düzeltmeleri</h3>
                                 <ul className="space-y-2">
                                     {report.grammarFeedback.map((item, i) => (
                                         <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
-                                            <p className="text-slate-900 dark:text-slate-200"><span className="text-red-600 dark:text-red-400 line-through">{item.error}</span> &rarr; <span className="text-green-600 dark:text-green-400 font-semibold">{item.correction}</span></p>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Açıklama: {item.explanation}</p>
+                                            <p className="text-text-primary"><span className="text-red-600 dark:text-red-400 line-through">{item.error}</span> &rarr; <span className="text-green-600 dark:text-green-400 font-semibold">{item.correction}</span></p>
+                                            <p className="text-xs text-text-secondary mt-1">Açıklama: {item.explanation}</p>
                                         </li>
                                     ))}
                                 </ul>
@@ -489,19 +443,19 @@ const SpeakingSimulator: React.FC = () => {
                         {/* Vocabulary Suggestions */}
                         {report.vocabularySuggestions.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">💡 Kelime Önerileri</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-text-primary">💡 Kelime Önerileri</h3>
                                 <ul className="space-y-2">
                                     {report.vocabularySuggestions.map((item, i) => (
                                         <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
-                                            <p className="text-slate-900 dark:text-slate-200">'{item.original}' yerine '{item.suggestion}' kullanabilirsin.</p>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Neden: {item.reason}</p>
+                                            <p className="text-text-primary">'{item.original}' yerine '{item.suggestion}' kullanabilirsin.</p>
+                                            <p className="text-xs text-text-secondary mt-1">Neden: {item.reason}</p>
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                         )}
                     </div>
-                ) : <div className="flex-grow flex items-center justify-center text-slate-500 dark:text-slate-400"><p>Analiz edilecek yeterli konuşma verisi bulunamadı.</p></div>
+                ) : <div className="flex-grow flex items-center justify-center text-text-secondary"><p>Analiz edilecek yeterli konuşma verisi bulunamadı.</p></div>
             )}
             <div className="flex-shrink-0 pt-4">
                 <button onClick={() => { setSimulatorState('selection'); setReport(null); setConversation([]); }}
@@ -523,7 +477,5 @@ const SpeakingSimulator: React.FC = () => {
         </div>
     );
 };
-
-
 
 export default SpeakingSimulator;
