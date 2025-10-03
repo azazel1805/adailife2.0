@@ -9,9 +9,8 @@ import { SpeakerIcon, StopIcon } from '../components/icons/Icons';
 
 type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' | 'report';
 
-// --- Static Scenario Data ---
+// --- Static Scenario Data (no changes) ---
 const scenarios: Scenario[] = [
-    // ... (Your scenario data remains unchanged)
     {
         id: 'cafe_order',
         title: 'Ordering at a Cafe',
@@ -112,17 +111,16 @@ const SpeakingSimulator: React.FC = () => {
     const [error, setError] = useState('');
     const { trackAction } = useChallenge();
 
-    // --- Audio & Live API Refs ---
+    // --- Audio & Live API Refs (no changes) ---
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
-    // MODIFIED: Replaced scriptProcessorRef with audioWorkletNodeRef
     const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const outputAudioSources = useRef<Set<AudioBufferSourceNode>>(new Set());
     const nextAudioStartTime = useRef<number>(0);
 
-    // --- Audio Helper Functions (from guidelines) ---
+    // --- Audio Helper Functions (no changes) ---
     const encode = (bytes: Uint8Array) => {
         let binary = '';
         const len = bytes.byteLength;
@@ -166,11 +164,10 @@ const SpeakingSimulator: React.FC = () => {
       return buffer;
     }
 
-    // --- Cleanup Functions ---
+    // --- Cleanup Functions (no changes) ---
     const cleanupAudio = () => {
-        // MODIFIED: Disconnect the AudioWorkletNode
         if (audioWorkletNodeRef.current) {
-            audioWorkletNodeRef.current.port.onmessage = null; // Remove listener
+            audioWorkletNodeRef.current.port.onmessage = null;
             audioWorkletNodeRef.current.port.close();
             audioWorkletNodeRef.current.disconnect();
             audioWorkletNodeRef.current = null;
@@ -227,29 +224,32 @@ const SpeakingSimulator: React.FC = () => {
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
                 callbacks: {
-                    // MODIFIED: Complete rewrite of onopen to use AudioWorkletNode
                     onopen: async () => {
                         try {
                             const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
                             inputAudioContextRef.current = inputCtx;
 
-                            // This line loads the pcm-processor.js file you created in the public folder
                             await inputCtx.audioWorklet.addModule('/pcm-processor.js');
+
+                            // NEW: Add this check to prevent a race condition.
+                            // If the context was closed by a cleanup call while we were waiting for the module to load,
+                            // we should stop here to avoid errors.
+                            if (inputCtx.state === 'closed') {
+                                console.log("Aborting audio setup: context has been closed.");
+                                return;
+                            }
                             
                             const source = inputCtx.createMediaStreamSource(stream);
                             const pcmWorkletNode = new AudioWorkletNode(inputCtx, 'pcm-processor');
                             audioWorkletNodeRef.current = pcmWorkletNode;
 
-                            // Listen for messages (the raw audio data) from the processor
                             pcmWorkletNode.port.onmessage = (event) => {
                                 const pcmData = event.data;
                                 const pcmBlob = createBlob(pcmData);
                                 sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
                             };
-
-                            // Connect the microphone source to our worklet node
+                            
                             source.connect(pcmWorkletNode);
-                            // It's good practice to connect to the destination to keep the audio clock running
                             pcmWorkletNode.connect(inputCtx.destination);
                             
                         } catch (workletError) {
@@ -259,7 +259,7 @@ const SpeakingSimulator: React.FC = () => {
                         }
                     },
                     onmessage: async (message: LiveServerMessage) => {
-                        // Handle user's transcription
+                        // (No changes in this block)
                         if (message.serverContent?.inputTranscription) {
                             const text = message.serverContent.inputTranscription.text;
                             setConversation(prev => {
@@ -270,7 +270,6 @@ const SpeakingSimulator: React.FC = () => {
                                 return [...prev, { speaker: 'user', text }];
                             });
                         }
-                        // Handle AI's transcription
                         else if (message.serverContent?.outputTranscription) {
                             const text = message.serverContent.outputTranscription.text;
                             setConversation(prev => {
@@ -282,13 +281,13 @@ const SpeakingSimulator: React.FC = () => {
                             });
                         }
                         
-                        // Handle AI's audio output
                         const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
                         if (audioData) {
                             if (!outputAudioContextRef.current) {
                                 outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
                             }
                             const ctx = outputAudioContextRef.current;
+                            if (ctx.state === 'closed') return; // Defensive check for output context
                             nextAudioStartTime.current = Math.max(nextAudioStartTime.current, ctx.currentTime);
                             const audioBuffer = await decodeAudioData(decode(audioData), ctx, 24000, 1);
                             const source = ctx.createBufferSource();
