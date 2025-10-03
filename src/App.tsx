@@ -39,7 +39,7 @@ import Basics from '../pages/Basics';
 import Tenses from '../pages/Tenses';
 import Crossword from '../pages/Crossword';
 import GrammarGaps from '../pages/GrammarGaps';
-import Hangman from './pages/Hangman';
+import Hangman from '../pages/Hangman';
 
 
 
