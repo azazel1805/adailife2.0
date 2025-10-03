@@ -113,7 +113,7 @@ const WordSprint: React.FC = () => {
 
     const renderSetup = () => (
         <div className="text-center">
-            <h2 className="text-4xl font-bold mb-2 text-adai-primary">Word Sprint 🏃</h2>
+            <h2 className="text-4xl font-bold mb-2 text-adai-primary">Kelime Maratonu 🏃</h2>
             <p className="mb-6 text-slate-500 dark:text-slate-400">60 saniyede en yüksek skoru yapmaya çalış!</p>
             
             <div className="mb-6">
