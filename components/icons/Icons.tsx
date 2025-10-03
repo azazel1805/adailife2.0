@@ -45,6 +45,7 @@ export const AffixIcon: React.FC = () => <span role="img" aria-label="Affix icon
 export const BasicsIcon: React.FC = () => <span role="img" aria-label="Basics icon" className="text-xl">🧱</span>;
 export const TensesIcon: React.FC = () => <span role="img" aria-label="Tenses icon" className="text-xl">🕒</span>;
 export const VerbToBeIcon: React.FC = () => <span role="img" aria-label="Verb to be icon" className="text-xl">🧍</span>;
+export const CrosswordIcon: React.FC = () => <span role="img" aria-label="Crossword icon" className="text-xl">🔡</span>;
 
 
 
