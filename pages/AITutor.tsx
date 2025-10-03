@@ -114,10 +114,8 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
     // --- Live Session Cleanup ---
     const stopConversation = useCallback(() => {
         if (conversationState !== 'active') return;
-        
-        sessionPromiseRef.current?.then(session => session.close());
-        sessionPromiseRef.current = null;
-    
+
+        // 1. Shut down the audio pipeline first to stop sending data.
         audioWorkletNodeRef.current?.disconnect();
         mediaStreamSourceRef.current?.disconnect();
         audioWorkletNodeRef.current = null;
@@ -133,7 +131,12 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
         outputAudioContextRef.current?.close().catch(console.error);
         outputAudioContextRef.current = null;
         nextAudioStartTime.current = 0;
+        
+        // 2. Now, close the WebSocket session.
+        sessionPromiseRef.current?.then(session => session.close());
+        sessionPromiseRef.current = null;
     
+        // 3. Finally, update the UI state.
         setConversationState('idle');
     }, [conversationState]);
 
