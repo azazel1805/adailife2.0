@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
 import { analyzeConversationForReport } from '../services/geminiService';
 import { Scenario, PerformanceReport, SimulatorChatMessage } from '../types';
@@ -111,6 +112,14 @@ const SpeakingSimulator: React.FC = () => {
     const [error, setError] = useState('');
     const { trackAction } = useChallenge();
 
+    // --- State Refs for stable callbacks ---
+    const simulatorStateRef = useRef(simulatorState);
+    useEffect(() => { simulatorStateRef.current = simulatorState; }, [simulatorState]);
+    const conversationRef = useRef(conversation);
+    useEffect(() => { conversationRef.current = conversation; }, [conversation]);
+    const selectedScenarioRef = useRef(selectedScenario);
+    useEffect(() => { selectedScenarioRef.current = selectedScenario; }, [selectedScenario]);
+
     // --- Audio & Live API Refs ---
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -167,31 +176,37 @@ const SpeakingSimulator: React.FC = () => {
     }
 
     // --- Cleanup Functions ---
-    const cleanupAudio = () => {
+    const cleanupAudio = useCallback(() => {
         scriptProcessorRef.current?.disconnect();
         scriptProcessorRef.current = null;
-        inputAudioContextRef.current?.close();
-        inputAudioContextRef.current = null;
         mediaStreamRef.current?.getTracks().forEach(track => track.stop());
         mediaStreamRef.current = null;
         
+        inputAudioContextRef.current?.close().catch(console.error);
+        inputAudioContextRef.current = null;
+        
         outputAudioSources.current.forEach(source => source.stop());
         outputAudioSources.current.clear();
-        outputAudioContextRef.current?.close();
+        outputAudioContextRef.current?.close().catch(console.error);
         outputAudioContextRef.current = null;
         nextAudioStartTime.current = 0;
-    };
+    }, []);
     
-    const stopSimulation = async () => {
-        if (simulatorState !== 'active') return;
+    const stopSimulation = useCallback(async () => {
+        if (simulatorStateRef.current !== 'active') return;
         
         setSimulatorState('processing_report');
-        sessionPromiseRef.current?.then(session => session.close());
+    
+        // 1. Immediately stop audio processing to prevent new `sendRealtimeInput` calls
         cleanupAudio();
         
+        // 2. Now it's safe to close the session
+        sessionPromiseRef.current?.then(session => session.close());
+        sessionPromiseRef.current = null;
+        
         try {
-            if (conversation.length > 1) { // Need more than just the AI's welcome
-                const reportText = await analyzeConversationForReport(selectedScenario!, conversation);
+            if (conversationRef.current.length > 1) { // Need more than just the AI's welcome
+                const reportText = await analyzeConversationForReport(selectedScenarioRef.current!, conversationRef.current);
                 const reportJson: PerformanceReport = JSON.parse(reportText);
                 setReport(reportJson);
                 trackAction('speaking_simulator');
@@ -203,7 +218,7 @@ const SpeakingSimulator: React.FC = () => {
         } finally {
             setSimulatorState('report');
         }
-    };
+    }, [cleanupAudio, trackAction]);
     
     const startSimulation = async () => {
         if (!selectedScenario) return;
@@ -267,7 +282,7 @@ const SpeakingSimulator: React.FC = () => {
                         // Handle AI's audio output
                         const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
                         if (audioData) {
-                            if (!outputAudioContextRef.current) {
+                            if (!outputAudioContextRef.current || outputAudioContextRef.current.state === 'closed') {
                                 outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
                             }
                             const ctx = outputAudioContextRef.current;
@@ -289,7 +304,8 @@ const SpeakingSimulator: React.FC = () => {
                     },
                     onclose: (e: CloseEvent) => {
                         console.debug('Live session closed.');
-                        cleanupAudio();
+                        // The guard in stopSimulation will prevent issues if it's already stopping.
+                        stopSimulation();
                     },
                 },
                 config: {
@@ -309,16 +325,15 @@ const SpeakingSimulator: React.FC = () => {
      // Cleanup on unmount
     useEffect(() => {
         return () => {
-            sessionPromiseRef.current?.then(session => session.close());
-            cleanupAudio();
+            stopSimulation();
         }
-    }, []);
+    }, [stopSimulation]);
     
     // --- Render Functions ---
     const renderSelection = () => (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Konuşma Simülatörü 🎭</h2>
-            <p className="mb-4 text-slate-500 dark:text-slate-400">Pratik yapmak istediğiniz bir senaryo seçin.</p>
+        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold mb-2 text-text-primary">Konuşma Simülatörü 🎭</h2>
+            <p className="mb-4 text-text-secondary">Pratik yapmak istediğiniz bir senaryo seçin.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {scenarios.map(s => (
                     <button key={s.id} onClick={() => { setSelectedScenario(s); setSimulatorState('briefing'); }}
@@ -337,7 +352,7 @@ const SpeakingSimulator: React.FC = () => {
     const renderBriefing = () => {
         if (!selectedScenario) return null;
         return (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
+            <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
                 <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario.title}</h2>
                 <div className="space-y-4 my-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     <p><strong>🤖 AI Rolü:</strong> {selectedScenario.aiRole}</p>
@@ -362,7 +377,7 @@ const SpeakingSimulator: React.FC = () => {
     };
 
     const renderActive = () => (
-         <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
+         <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
              <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario?.title}</h2>
              <div className="h-80 bg-gray-100 dark:bg-gray-700 rounded-lg p-4 overflow-y-auto space-y-3 mb-4">
                  {conversation.map((msg, i) => (
@@ -385,7 +400,7 @@ const SpeakingSimulator: React.FC = () => {
     );
     
     const renderReport = () => (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg space-y-6 flex flex-col max-h-[calc(100vh-12rem)]">
+        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg space-y-6 flex flex-col max-h-[calc(100vh-12rem)]">
             <div className="flex-shrink-0">
                 <h2 className="text-2xl font-bold text-brand-primary">Performans Raporu</h2>
             </div>
@@ -394,12 +409,12 @@ const SpeakingSimulator: React.FC = () => {
                     <div className="space-y-6 overflow-y-auto pr-4 flex-grow">
                         {/* Objective Completion */}
                         <div>
-                            <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">🎯 Hedef Tamamlama Durumu</h3>
+                            <h3 className="text-lg font-semibold mb-2 text-text-primary">🎯 Hedef Tamamlama Durumu</h3>
                             <ul className="space-y-2">
                                 {report.objectiveCompletion.map((obj, i) => (
                                     <li key={i} className={`p-3 rounded-md text-sm ${obj.completed ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
-                                        <span className={`font-bold ${obj.completed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{obj.completed ? '✅ Tamamlandı:' : '❌ Tamamlanmadı:'}</span> <span className="text-slate-900 dark:text-slate-200">{obj.objective}</span>
-                                        <p className="text-xs italic mt-1 text-slate-500 dark:text-slate-400">Gerekçe: {obj.reasoning}</p>
+                                        <span className={`font-bold ${obj.completed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{obj.completed ? '✅ Tamamlandı:' : '❌ Tamamlanmadı:'}</span> <span className="text-text-primary">{obj.objective}</span>
+                                        <p className="text-xs italic mt-1 text-text-secondary">Gerekçe: {obj.reasoning}</p>
                                     </li>
                                 ))}
                             </ul>
@@ -407,17 +422,17 @@ const SpeakingSimulator: React.FC = () => {
 
                         {/* Overall Feedback */}
                         <div>
-                            <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">💬 Genel Geri Bildirim</h3>
-                            <p className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-slate-500 dark:text-slate-400">{report.overallFeedback}</p>
+                            <h3 className="text-lg font-semibold mb-2 text-text-primary">💬 Genel Geri Bildirim</h3>
+                            <p className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-text-secondary">{report.overallFeedback}</p>
                         </div>
 
                         {/* Pronunciation Feedback */}
                         {report.pronunciationFeedback.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">🗣️ Telaffuz İpuçları</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-text-primary">🗣️ Telaffuz İpuçları</h3>
                                 <ul className="space-y-2">
                                     {report.pronunciationFeedback.map((item, i) => (
-                                        <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-slate-500 dark:text-slate-400">
+                                        <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-text-secondary">
                                             <strong className="text-purple-700 dark:text-purple-400">{item.word}:</strong> {item.feedback}
                                         </li>
                                     ))}
@@ -428,12 +443,12 @@ const SpeakingSimulator: React.FC = () => {
                         {/* Grammar Feedback */}
                         {report.grammarFeedback.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">✍️ Dil Bilgisi Düzeltmeleri</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-text-primary">✍️ Dil Bilgisi Düzeltmeleri</h3>
                                 <ul className="space-y-2">
                                     {report.grammarFeedback.map((item, i) => (
                                         <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
-                                            <p className="text-slate-900 dark:text-slate-200"><span className="text-red-600 dark:text-red-400 line-through">{item.error}</span> &rarr; <span className="text-green-600 dark:text-green-400 font-semibold">{item.correction}</span></p>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Açıklama: {item.explanation}</p>
+                                            <p className="text-text-primary"><span className="text-red-600 dark:text-red-400 line-through">{item.error}</span> &rarr; <span className="text-green-600 dark:text-green-400 font-semibold">{item.correction}</span></p>
+                                            <p className="text-xs text-text-secondary mt-1">Açıklama: {item.explanation}</p>
                                         </li>
                                     ))}
                                 </ul>
@@ -443,19 +458,19 @@ const SpeakingSimulator: React.FC = () => {
                         {/* Vocabulary Suggestions */}
                         {report.vocabularySuggestions.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-200">💡 Kelime Önerileri</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-text-primary">💡 Kelime Önerileri</h3>
                                 <ul className="space-y-2">
                                     {report.vocabularySuggestions.map((item, i) => (
                                         <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
-                                            <p className="text-slate-900 dark:text-slate-200">'{item.original}' yerine '{item.suggestion}' kullanabilirsin.</p>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Neden: {item.reason}</p>
+                                            <p className="text-text-primary">'{item.original}' yerine '{item.suggestion}' kullanabilirsin.</p>
+                                            <p className="text-xs text-text-secondary mt-1">Neden: {item.reason}</p>
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                         )}
                     </div>
-                ) : <div className="flex-grow flex items-center justify-center text-slate-500 dark:text-slate-400"><p>Analiz edilecek yeterli konuşma verisi bulunamadı.</p></div>
+                ) : <div className="flex-grow flex items-center justify-center text-text-secondary"><p>Analiz edilecek yeterli konuşma verisi bulunamadı.</p></div>
             )}
             <div className="flex-shrink-0 pt-4">
                 <button onClick={() => { setSimulatorState('selection'); setReport(null); setConversation([]); }}
