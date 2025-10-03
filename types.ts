@@ -497,3 +497,17 @@ export interface CrosswordData {
         cols: number;
     };
 }
+// Types for Word Sprint
+export interface WordSprintWord {
+    word: string;
+    meaning: string;
+}
+
+// Types for Concept Weaver
+export interface ConceptWeaverAnalysis {
+  overallFeedback: string;
+  grammarFeedback: GrammarFeedback[];
+  vocabularySuggestions: VocabularySuggestion[];
+  creativityScore: number;
+  creativityFeedback: string;
+}
