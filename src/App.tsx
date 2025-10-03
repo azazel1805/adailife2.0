@@ -38,11 +38,13 @@ import VisualDictionary from '../pages/VisualDictionary';
 import Basics from '../pages/Basics';
 import Tenses from '../pages/Tenses';
 import Crossword from '../pages/Crossword';
+import GrammarGaps from './pages/GrammarGaps';
+
 
 
 // Components
 import WelcomeTour from '/components/WelcomeTour';
-import { AnalyzeIcon, DictionaryIcon, HistoryIcon, DashboardIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, BasicsIcon, TensesIcon, CrosswordIcon } from '/components/icons/Icons';
+import { AnalyzeIcon, DictionaryIcon, HistoryIcon, DashboardIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, BasicsIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon } from '/components/icons/Icons';
 
 // Hooks & Types
 import useLocalStorage from '/hooks/useLocalStorage';
@@ -140,13 +142,14 @@ const App: React.FC = () => {
         'basics': { id: 'basics', label: 'Temel Bilgiler', icon: <BasicsIcon /> },
         'tenses': { id: 'tenses', label: 'Zamanlar (Tenses)', icon: <TensesIcon /> },
          'crossword': { id: 'crossword', label: 'Kelime Bulmaca', icon: <CrosswordIcon /> },
+         'grammar_gaps': { id: 'grammar_gaps', label: 'Grammar Gaps', icon: <GrammarGapsIcon /> },
         'admin': { id: 'admin', label: 'Admin Panel', icon: <AdminIcon /> },
     };
 
     const adaiMenuStructure = {
         main: ['dashboard', 'skill_tree', 'planner', 'tutor'],
         accordions: [
-            { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['basics', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator', 'crossword'] },
+            { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['basics', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator', 'crossword', 'grammar_gaps'] },
             { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
             { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
             { key: 'focused_analysis', label: "Odaklı Analiz", icon: <ExamIcon />, tabs: ['analyzer', 'reading', 'cohesion_analyzer', 'sentence_ordering', 'dialogue_completion', 'pdf_importer'] },
@@ -275,6 +278,7 @@ const App: React.FC = () => {
             case 'basics': return <Basics />;
             case 'tenses': return <Tenses />;
             case 'crossword': return <Crossword />;
+            case 'grammar_gaps': return <GrammarGaps />;
             case 'history': return <History />;
             case 'admin': return user?.email === 'admin@example.com' ? <AdminPage /> : <Dashboard onNavigate={handleTabClick} />;
             default: return <Dashboard onNavigate={handleTabClick} />;
