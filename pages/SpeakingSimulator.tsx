@@ -10,15 +10,6 @@ import { SpeakerIcon, StopIcon } from '../components/icons/Icons';
 type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' | 'report';
 type ConnectionStatus = 'idle' | 'connecting' | 'open' | 'closed';
 // NEW: Define a type for our connection statusimport React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
-import { analyzeConversationForReport } from '../services/geminiService';
-import { Scenario, PerformanceReport, SimulatorChatMessage } from '../types';
-import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
-import { useChallenge } from '../context/ChallengeContext';
-import { SpeakerIcon, StopIcon } from '../components/icons/Icons';
-
-type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' | 'report';
 
 // --- Static Scenario Data (no changes) ---
 const scenarios: Scenario[] = [
