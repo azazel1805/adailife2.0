@@ -91,10 +91,10 @@ const GrammarGaps: React.FC = () => {
     const renderSetup = () => (
         <div className="text-center">
             <p className="mb-6 text-slate-500 dark:text-slate-400">
-                A "Mad Libs" style game to practice grammar. Choose a difficulty and we'll generate a story with blanks for you to fill in.
+                Dilbilgisi pratiği yapabileceğiniz bir 'Mad Libs' tarzı oyun. Bir zorluk seviyesi seçin, sizin doldurmanız için boşlukları olan bir hikaye oluşturalım.
             </p>
             <div className="mb-6">
-                <h3 className="font-semibold mb-2 text-slate-800 dark:text-slate-200">Difficulty Level</h3>
+                <h3 className="font-semibold mb-2 text-slate-800 dark:text-slate-200">Zorluk</h3>
                 <div className="flex justify-center gap-2">
                     {DIFFICULTY_LEVELS.map(level => (
                         <button key={level} onClick={() => setDifficulty(level)}
