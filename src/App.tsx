@@ -37,6 +37,8 @@ import PragmaticAnalysisTool from '../pages/PragmaticAnalysisTool';
 import VisualDictionary from '../pages/VisualDictionary';
 import Basics from '../pages/Basics';
 import Tenses from '../pages/Tenses';
+import Crossword from '../pages/Crossword';
+
 
 // Components
 import WelcomeTour from '/components/WelcomeTour';
@@ -137,13 +139,14 @@ const App: React.FC = () => {
         'pdf_importer': { id: 'pdf_importer', label: 'PDF Sınav Yükleyici', icon: <PDFImporterIcon /> },
         'basics': { id: 'basics', label: 'Temel Bilgiler', icon: <BasicsIcon /> },
         'tenses': { id: 'tenses', label: 'Zamanlar (Tenses)', icon: <TensesIcon /> },
+         'crossword': { id: 'crossword', label: 'Kelime Bulmaca', icon: <CrosswordIcon /> },
         'admin': { id: 'admin', label: 'Admin Panel', icon: <AdminIcon /> },
     };
 
     const adaiMenuStructure = {
         main: ['dashboard', 'skill_tree', 'planner', 'tutor'],
         accordions: [
-            { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['basics', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator'] },
+            { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['basics', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator', 'crossword'] },
             { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
             { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
             { key: 'focused_analysis', label: "Odaklı Analiz", icon: <ExamIcon />, tabs: ['analyzer', 'reading', 'cohesion_analyzer', 'sentence_ordering', 'dialogue_completion', 'pdf_importer'] },
@@ -271,6 +274,7 @@ const App: React.FC = () => {
             case 'phrasal_verb_deconstructor': return <PhrasalVerbDeconstructor />;
             case 'basics': return <Basics />;
             case 'tenses': return <Tenses />;
+            case 'crossword': return <Crossword />;
             case 'history': return <History />;
             case 'admin': return user?.email === 'admin@example.com' ? <AdminPage /> : <Dashboard onNavigate={handleTabClick} />;
             default: return <Dashboard onNavigate={handleTabClick} />;
