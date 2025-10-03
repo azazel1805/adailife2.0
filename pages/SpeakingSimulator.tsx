@@ -11,6 +11,7 @@ type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' 
 
 // --- Static Scenario Data ---
 const scenarios: Scenario[] = [
+    // ... (Your scenario data remains unchanged)
     {
         id: 'cafe_order',
         title: 'Ordering at a Cafe',
@@ -115,7 +116,8 @@ const SpeakingSimulator: React.FC = () => {
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
-    const scriptProcessorRef = useRef<{ disconnect: () => void } | null>(null); // Modified to accept our mock object
+    // MODIFIED: Replaced scriptProcessorRef with audioWorkletNodeRef
+    const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const outputAudioSources = useRef<Set<AudioBufferSourceNode>>(new Set());
     const nextAudioStartTime = useRef<number>(0);
@@ -134,9 +136,7 @@ const SpeakingSimulator: React.FC = () => {
         const l = data.length;
         const int16 = new Int16Array(l);
         for (let i = 0; i < l; i++) {
-            // Clamp the value to the [-1.0, 1.0] range to ensure it's valid.
             const s = Math.max(-1, Math.min(1, data[i]));
-            // Convert to 16-bit signed integer.
             int16[i] = s < 0 ? s * 32768 : s * 32767;
         }
         return { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' };
@@ -168,16 +168,22 @@ const SpeakingSimulator: React.FC = () => {
 
     // --- Cleanup Functions ---
     const cleanupAudio = () => {
-        scriptProcessorRef.current?.disconnect();
-        scriptProcessorRef.current = null;
-        inputAudioContextRef.current?.close();
+        // MODIFIED: Disconnect the AudioWorkletNode
+        if (audioWorkletNodeRef.current) {
+            audioWorkletNodeRef.current.port.onmessage = null; // Remove listener
+            audioWorkletNodeRef.current.port.close();
+            audioWorkletNodeRef.current.disconnect();
+            audioWorkletNodeRef.current = null;
+        }
+
+        inputAudioContextRef.current?.close().catch(console.error);
         inputAudioContextRef.current = null;
         mediaStreamRef.current?.getTracks().forEach(track => track.stop());
         mediaStreamRef.current = null;
         
         outputAudioSources.current.forEach(source => source.stop());
         outputAudioSources.current.clear();
-        outputAudioContextRef.current?.close();
+        outputAudioContextRef.current?.close().catch(console.error);
         outputAudioContextRef.current = null;
         nextAudioStartTime.current = 0;
     };
@@ -190,13 +196,13 @@ const SpeakingSimulator: React.FC = () => {
         cleanupAudio();
         
         try {
-            if (conversation.length > 1) { // Need more than just the AI's welcome
+            if (conversation.length > 1) {
                 const reportText = await analyzeConversationForReport(selectedScenario!, conversation);
                 const reportJson: PerformanceReport = JSON.parse(reportText);
                 setReport(reportJson);
                 trackAction('speaking_simulator');
             } else {
-                setReport(null); // No report if no interaction
+                setReport(null);
             }
         } catch (e: any) {
             setError(e.message || 'An error occurred while generating the analysis report.');
@@ -221,20 +227,36 @@ const SpeakingSimulator: React.FC = () => {
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
                 callbacks: {
-                    onopen: () => {
-                        const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-                        inputAudioContextRef.current = inputCtx;
-                        const source = inputCtx.createMediaStreamSource(stream);
-                        const processor = inputCtx.createScriptProcessor(4096, 1, 1);
-                        scriptProcessorRef.current = processor;
+                    // MODIFIED: Complete rewrite of onopen to use AudioWorkletNode
+                    onopen: async () => {
+                        try {
+                            const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+                            inputAudioContextRef.current = inputCtx;
 
-                        processor.onaudioprocess = (audioEvent) => {
-                            const inputData = audioEvent.inputBuffer.getChannelData(0);
-                            const pcmBlob = createBlob(inputData);
-                            sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-                        };
-                        source.connect(processor);
-                        processor.connect(inputCtx.destination);
+                            // This line loads the pcm-processor.js file you created in the public folder
+                            await inputCtx.audioWorklet.addModule('/pcm-processor.js');
+                            
+                            const source = inputCtx.createMediaStreamSource(stream);
+                            const pcmWorkletNode = new AudioWorkletNode(inputCtx, 'pcm-processor');
+                            audioWorkletNodeRef.current = pcmWorkletNode;
+
+                            // Listen for messages (the raw audio data) from the processor
+                            pcmWorkletNode.port.onmessage = (event) => {
+                                const pcmData = event.data;
+                                const pcmBlob = createBlob(pcmData);
+                                sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
+                            };
+
+                            // Connect the microphone source to our worklet node
+                            source.connect(pcmWorkletNode);
+                            // It's good practice to connect to the destination to keep the audio clock running
+                            pcmWorkletNode.connect(inputCtx.destination);
+                            
+                        } catch (workletError) {
+                            console.error('Error setting up AudioWorklet:', workletError);
+                            setError('Failed to initialize audio processor. Please check browser compatibility and try again.');
+                            stopSimulation();
+                        }
                     },
                     onmessage: async (message: LiveServerMessage) => {
                         // Handle user's transcription
@@ -243,10 +265,8 @@ const SpeakingSimulator: React.FC = () => {
                             setConversation(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last?.speaker === 'user') {
-                                    // Append to existing user message
                                     return [...prev.slice(0, -1), { ...last, text: last.text + text }];
                                 }
-                                // Start a new user message
                                 return [...prev, { speaker: 'user', text }];
                             });
                         }
@@ -256,10 +276,8 @@ const SpeakingSimulator: React.FC = () => {
                             setConversation(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last?.speaker === 'ai') {
-                                    // Append to existing AI message
                                     return [...prev.slice(0, -1), { ...last, text: last.text + text }];
                                 }
-                                // Start a new AI message (the user's turn must be over)
                                 return [...prev, { speaker: 'ai', text }];
                             });
                         }
@@ -287,7 +305,7 @@ const SpeakingSimulator: React.FC = () => {
                         setError('A conversation session error occurred. Ending session automatically.');
                         stopSimulation();
                     },
-                    onclose: (e: CloseEvent) => {
+                    onclose: () => {
                         console.debug('Live session closed.');
                         cleanupAudio();
                     },
@@ -301,12 +319,12 @@ const SpeakingSimulator: React.FC = () => {
             });
 
         } catch (err) {
+            console.error("Error starting simulation: ", err);
             setError('Mikrofon erişimi reddedildi veya bulunamadı. Lütfen tarayıcı ayarlarınızı kontrol edin.');
             setSimulatorState('briefing');
         }
     };
     
-     // Cleanup on unmount
     useEffect(() => {
         return () => {
             sessionPromiseRef.current?.then(session => session.close());
@@ -314,7 +332,7 @@ const SpeakingSimulator: React.FC = () => {
         }
     }, []);
     
-    // --- Render Functions ---
+    // --- Render Functions (No changes below this line) ---
     const renderSelection = () => (
         <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
             <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Konuşma Simülatörü 🎭</h2>
