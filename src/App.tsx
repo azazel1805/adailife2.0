@@ -144,7 +144,7 @@ const App: React.FC = () => {
         'basics': { id: 'basics', label: 'Temel Bilgiler', icon: <BasicsIcon /> },
         'tenses': { id: 'tenses', label: 'Zamanlar (Tenses)', icon: <TensesIcon /> },
          'crossword': { id: 'crossword', label: 'Kelime Bulmaca', icon: <CrosswordIcon /> },
-         'grammar_gaps': { id: 'grammar_gaps', label: 'Grammar Gaps', icon: <GrammarGapsIcon /> },
+         'grammar_gaps': { id: 'grammar_gaps', label: 'Dilbilgisel Boşluklar', icon: <GrammarGapsIcon /> },
         'hangman': { id: 'hangman', label: 'Adam Asmaca', icon: <HangmanIcon /> },
         'admin': { id: 'admin', label: 'Admin Panel', icon: <AdminIcon /> },
     };
