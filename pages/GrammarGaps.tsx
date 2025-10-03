@@ -162,7 +162,7 @@ const GrammarGaps: React.FC = () => {
         <div className="max-w-3xl mx-auto">
             <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800">
                 <div className="text-center">
-                    <h2 className="text-3xl font-bold mb-2 text-slate-900 dark:text-slate-50">Grammar Gaps ✏️</h2>
+                    <h2 className="text-3xl font-bold mb-2 text-slate-900 dark:text-slate-50">Dilbigisel Boşluklar ✏️</h2>
                 </div>
                 <ErrorMessage message={error} />
                 {renderContent()}
