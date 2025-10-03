@@ -1,6 +1,5 @@
-
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
+import React, { useState, useRef, useEffect } from 'react';
+import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { analyzeConversationForReport } from '../services/geminiService';
 import { Scenario, PerformanceReport, SimulatorChatMessage } from '../types';
 import Loader from '../components/Loader';
@@ -9,6 +8,34 @@ import { useChallenge } from '../context/ChallengeContext';
 import { SpeakerIcon, StopIcon } from '../components/icons/Icons';
 
 type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' | 'report';
+
+// FIX: Define a local type for the Gemini Blob structure as it's not exported from the library.
+type GeminiBlob = {
+  data: string;
+  mimeType: string;
+};
+
+// --- AudioWorklet Setup ---
+// This code runs in a separate, high-priority thread to process audio.
+const workletCode = `
+class AudioProcessor extends AudioWorkletProcessor {
+  process(inputs) {
+    const input = inputs[0];
+    if (input.length > 0) {
+      const channel = input[0];
+      if (channel) {
+        // Send the Float32Array data back to the main thread.
+        this.port.postMessage(channel);
+      }
+    }
+    return true; // Keep the processor alive.
+  }
+}
+registerProcessor('audio-processor', AudioProcessor);
+`;
+const workletBlob = new Blob([workletCode], { type: 'application/javascript' });
+const workletURL = URL.createObjectURL(workletBlob);
+
 
 // --- Static Scenario Data ---
 const scenarios: Scenario[] = [
@@ -112,19 +139,12 @@ const SpeakingSimulator: React.FC = () => {
     const [error, setError] = useState('');
     const { trackAction } = useChallenge();
 
-    // --- State Refs for stable callbacks ---
-    const simulatorStateRef = useRef(simulatorState);
-    useEffect(() => { simulatorStateRef.current = simulatorState; }, [simulatorState]);
-    const conversationRef = useRef(conversation);
-    useEffect(() => { conversationRef.current = conversation; }, [conversation]);
-    const selectedScenarioRef = useRef(selectedScenario);
-    useEffect(() => { selectedScenarioRef.current = selectedScenario; }, [selectedScenario]);
-
     // --- Audio & Live API Refs ---
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
-    const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+    const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
+    const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const outputAudioSources = useRef<Set<AudioBufferSourceNode>>(new Set());
     const nextAudioStartTime = useRef<number>(0);
@@ -139,7 +159,7 @@ const SpeakingSimulator: React.FC = () => {
         return btoa(binary);
     };
 
-    const createBlob = (data: Float32Array): Blob => {
+    const createBlob = (data: Float32Array): GeminiBlob => {
         const l = data.length;
         const int16 = new Int16Array(l);
         for (let i = 0; i < l; i++) {
@@ -176,51 +196,56 @@ const SpeakingSimulator: React.FC = () => {
     }
 
     // --- Cleanup Functions ---
-    const cleanupAudio = useCallback(() => {
-        scriptProcessorRef.current?.disconnect();
-        scriptProcessorRef.current = null;
+    const cleanupAudio = () => {
+        audioWorkletNodeRef.current?.disconnect();
+        mediaStreamSourceRef.current?.disconnect();
+        audioWorkletNodeRef.current = null;
+        mediaStreamSourceRef.current = null;
+
+        inputAudioContextRef.current?.close();
+        inputAudioContextRef.current = null;
         mediaStreamRef.current?.getTracks().forEach(track => track.stop());
         mediaStreamRef.current = null;
         
-        inputAudioContextRef.current?.close().catch(console.error);
-        inputAudioContextRef.current = null;
-        
         outputAudioSources.current.forEach(source => source.stop());
         outputAudioSources.current.clear();
-        outputAudioContextRef.current?.close().catch(console.error);
+        outputAudioContextRef.current?.close();
         outputAudioContextRef.current = null;
         nextAudioStartTime.current = 0;
-    }, []);
+    };
     
-    const stopSimulation = useCallback(async () => {
-        if (simulatorStateRef.current !== 'active') return;
+    const stopSimulation = async () => {
+        if (simulatorState !== 'active' && simulatorState !== 'processing_report') return;
         
-        // Immediately update ref to prevent re-entry from rapid calls (e.g., from onerror and onclose)
-        simulatorStateRef.current = 'processing_report';
-        setSimulatorState('processing_report');
-    
-        // 1. Immediately stop audio processing to prevent new `sendRealtimeInput` calls
+        // Ensure state is set to processing for UI feedback
+        if (simulatorState === 'active') {
+            setSimulatorState('processing_report');
+        }
+        
+        // 1. Clean up the audio pipeline first to stop sending data.
         cleanupAudio();
         
-        // 2. Now it's safe to close the session
+        // 2. Now, close the WebSocket session.
         sessionPromiseRef.current?.then(session => session.close());
         sessionPromiseRef.current = null;
         
         try {
-            if (conversationRef.current.length > 1) { // Need more than just the AI's welcome
-                const reportText = await analyzeConversationForReport(selectedScenarioRef.current!, conversationRef.current);
+            // Only generate a report if there was actual interaction
+            if (conversation.length > 1) { 
+                const reportText = await analyzeConversationForReport(selectedScenario!, conversation);
                 const reportJson: PerformanceReport = JSON.parse(reportText);
                 setReport(reportJson);
                 trackAction('speaking_simulator');
             } else {
-                setReport(null); // No report if no interaction
+                setReport(null); 
             }
         } catch (e: any) {
             setError(e.message || 'An error occurred while generating the analysis report.');
         } finally {
+            // Ensure state transitions to report view even if report generation fails
             setSimulatorState('report');
         }
-    }, [cleanupAudio, trackAction]);
+    };
     
     const startSimulation = async () => {
         if (!selectedScenario) return;
@@ -238,20 +263,31 @@ const SpeakingSimulator: React.FC = () => {
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
                 callbacks: {
-                    onopen: () => {
+                    onopen: async () => {
                         const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
                         inputAudioContextRef.current = inputCtx;
-                        const source = inputCtx.createMediaStreamSource(stream);
-                        const processor = inputCtx.createScriptProcessor(4096, 1, 1);
-                        scriptProcessorRef.current = processor;
+                        
+                        try {
+                            await inputCtx.audioWorklet.addModule(workletURL);
 
-                        processor.onaudioprocess = (audioEvent) => {
-                            const inputData = audioEvent.inputBuffer.getChannelData(0);
-                            const pcmBlob = createBlob(inputData);
-                            sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-                        };
-                        source.connect(processor);
-                        processor.connect(inputCtx.destination);
+                            const source = inputCtx.createMediaStreamSource(stream);
+                            mediaStreamSourceRef.current = source;
+
+                            const workletNode = new AudioWorkletNode(inputCtx, 'audio-processor');
+                            audioWorkletNodeRef.current = workletNode;
+
+                            workletNode.port.onmessage = (event) => {
+                                const inputData = event.data;
+                                const pcmBlob = createBlob(inputData);
+                                sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
+                            };
+                            source.connect(workletNode);
+                            workletNode.connect(inputCtx.destination);
+                        } catch (e) {
+                             console.error("Error setting up audio worklet:", e);
+                             setError('Audio processing setup failed.');
+                             stopSimulation();
+                        }
                     },
                     onmessage: async (message: LiveServerMessage) => {
                         // Handle user's transcription
@@ -306,7 +342,8 @@ const SpeakingSimulator: React.FC = () => {
                     },
                     onclose: (e: CloseEvent) => {
                         console.debug('Live session closed.');
-                        // The guard in stopSimulation will prevent issues if it's already stopping.
+                        // The stopSimulation function handles cleanup and UI state updates.
+                        // The check inside stopSimulation prevents it from running more than once.
                         stopSimulation();
                     },
                 },
@@ -327,9 +364,10 @@ const SpeakingSimulator: React.FC = () => {
      // Cleanup on unmount
     useEffect(() => {
         return () => {
-            stopSimulation();
+            sessionPromiseRef.current?.then(session => session.close());
+            cleanupAudio();
         }
-    }, [stopSimulation]);
+    }, []);
     
     // --- Render Functions ---
     const renderSelection = () => (
