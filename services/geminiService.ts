@@ -1382,3 +1382,19 @@ export const generateCrossword = async (words: VocabularyItem[]): Promise<string
         throw new Error("Bulmaca oluşturulurken bir hata oluştu. Kelime listenizle uyumlu bir bulmaca oluşturulamadı.");
     }
 };
+
+export const generateGrammarGapsStory = async (difficulty: string): Promise<string> => {
+    const placeholderCount = difficulty === 'Kolay' ? '6 and 8' : difficulty === 'Orta' ? '8 and 12' : '10 and 15';
+    const complexity = difficulty === 'Kolay' ? 'very simple (A1-A2 level)' : difficulty === 'Orta' ? 'simple (A2-B1 level)' : 'intermediate (B1-B2 level)';
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Create a short story for an English learner. The story's language complexity should be ${complexity}. The story must contain between ${placeholderCount} placeholders. Replace key words (nouns, verbs, adjectives, adverbs) with placeholders in the format [PART_OF_SPEECH: optional hint] or [PART_OF_SPEECH]. For example: [NOUN], [VERB: past tense], [ADJECTIVE: color]. Do not use markdown. Respond with only the story text containing the placeholders.`,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating Grammar Gaps story:", error);
+        throw new Error("Hikaye şablonu oluşturulurken bir hata oluştu.");
+    }
+};
