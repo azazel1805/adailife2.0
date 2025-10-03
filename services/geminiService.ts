@@ -866,6 +866,14 @@ export const createTutorChatSession = (): Chat => {
         }
     });
 };
+export const createSpeakingSimulatorSession = (scenario: Scenario): Chat => {
+    return ai.chats.create({
+        model: 'gemini-2.5-flash-lite',
+        config: {
+            systemInstruction: `You are an AI role-playing as a ${scenario.aiRole}. Your goal is to have a natural conversation with the user, who is playing the role of a ${scenario.userRole}. Act your part convincingly. Do not break character. Keep your responses concise and natural for a spoken conversation. Do not add conversational filler like 'Okay!' or 'Great'. Just give your response directly.`
+        }
+    });
+};
 
 export const createCreativeWritingSession = (format: string, start: string): Chat => {
     return ai.chats.create({
