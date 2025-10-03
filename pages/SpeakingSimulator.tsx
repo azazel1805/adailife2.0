@@ -216,22 +216,101 @@ const SpeakingSimulator: React.FC = () => {
     }, []);
 
     // --- Render Functions (No changes below this line) ---
-    const renderSelection = () => (
-        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
-            {/* ... JSX ... */}
-        </div>
+    const renderBriefing = () => {
+        if (!selectedScenario) return null;
+        return (
+            <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
+                <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario.title}</h2>
+                <div className="space-y-4 my-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                    <p><strong>🤖 AI Rolü:</strong> {selectedScenario.aiRole}</p>
+                    <p><strong>👤 Senin Rolün:</strong> {selectedScenario.userRole}</p>
+                    <div>
+                        <h4 className="font-bold mb-2">🎯 Hedeflerin:</h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                            {selectedScenario.objectives.map((obj, i) => <li key={i}>{obj}</li>)}
+                        </ul>
+                    </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <button onClick={startSimulation} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md transition duration-300">
+                        Simülasyonu Başlat
+                    </button>
+                    <button onClick={() => setSimulatorState('selection')} className="flex-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-3 px-4 rounded-md transition duration-300">
+                        Geri Dön
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    const renderActive = () => (
+         <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
+             <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario?.title}</h2>
+             <div className="h-80 bg-gray-100 dark:bg-gray-700 rounded-lg p-4 overflow-y-auto space-y-3 mb-4">
+                 {conversation.map((msg, i) => (
+                     <div key={i} className={`flex items-end gap-2 ${msg.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
+                         {msg.speaker === 'ai' && <span className="text-2xl">🤖</span>}
+                         <div className={`max-w-md p-3 rounded-2xl ${msg.speaker === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none'}`}>
+                             <p className="text-sm">{msg.text}</p>
+                         </div>
+                          {msg.speaker === 'user' && <span className="text-2xl">👤</span>}
+                     </div>
+                 ))}
+             </div>
+             <div className="text-center font-bold text-red-500 animate-pulse mb-4">
+                 🔴 KAYIT AKTİF
+             </div>
+             <button onClick={stopSimulation} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-md transition duration-300">
+                 Simülasyonu Bitir ve Rapor Al
+             </button>
+         </div>
     );
     
-    const renderBriefing = () => { /* ... JSX ... */ return null; };
-    const renderActive = () => ( /* ... JSX ... */ return null; );
-    const renderReport = () => ( /* ... JSX ... */ return null; );
+    const renderReport = () => (
+        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg space-y-6 flex flex-col max-h-[calc(100vh-12rem)]">
+            <div className="flex-shrink-0">
+                <h2 className="text-2xl font-bold text-brand-primary">Performans Raporu</h2>
+            </div>
+            {simulatorState === 'processing_report' ? <div className="flex-grow flex items-center justify-center"><Loader /></div> : (
+                report ? (
+                    <div className="space-y-6 overflow-y-auto pr-4 flex-grow">
+                        {/* Objective Completion */}
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2 text-text-primary">🎯 Hedef Tamamlama Durumu</h3>
+                            <ul className="space-y-2">
+                                {report.objectiveCompletion.map((obj, i) => (
+                                    <li key={i} className={`p-3 rounded-md text-sm ${obj.completed ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
+                                        <span className={`font-bold ${obj.completed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{obj.completed ? '✅ Tamamlandı:' : '❌ Tamamlanmadı:'}</span> <span className="text-text-primary">{obj.objective}</span>
+                                        <p className="text-xs italic mt-1 text-text-secondary">Gerekçe: {obj.reasoning}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        {/* Overall Feedback */}
+                        <div>
+                            <h3 className="text-lg font-semibold mb-2 text-text-primary">💬 Genel Geri Bildirim</h3>
+                            <p className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-text-secondary">{report.overallFeedback}</p>
+                        </div>
+                    </div>
+                ) : <div className="flex-grow flex items-center justify-center text-text-secondary"><p>Analiz edilecek yeterli konuşma verisi bulunamadı.</p></div>
+            )}
+            <div className="flex-shrink-0 pt-4">
+                <button onClick={() => { setSimulatorState('selection'); setReport(null); setConversation([]); }}
+                    className="w-full bg-brand-secondary hover:bg-brand-primary text-white font-bold py-3 px-4 rounded-md transition duration-300">
+                    Yeni Simülasyon
+                </button>
+            </div>
+        </div>
+    );
+
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             <ErrorMessage message={error} />
             {simulatorState === 'selection' && renderSelection()}
             {simulatorState === 'briefing' && renderBriefing()}
-            {simulatorState === 'active' && renderActive()}
+            {(simulatorState === 'active') && renderActive()}
             {(simulatorState === 'processing_report' || simulatorState === 'report') && renderReport()}
         </div>
     );
