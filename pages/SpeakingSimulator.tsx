@@ -9,7 +9,7 @@ import { SpeakerIcon, StopIcon } from '../components/icons/Icons';
 
 type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' | 'report';
 
-// FIX: Define a local type for the Gemini Blob structure as it's not exported from the library.
+// Define a local type for the Gemini Blob structure as it's not exported from the library.
 type GeminiBlob = {
   data: string;
   mimeType: string;
@@ -197,37 +197,48 @@ const SpeakingSimulator: React.FC = () => {
 
     // --- Cleanup Functions ---
     const cleanupAudio = () => {
+        // Disconnect audio nodes to stop processing
+        audioWorkletNodeRef.current?.port.close();
         audioWorkletNodeRef.current?.disconnect();
         mediaStreamSourceRef.current?.disconnect();
         audioWorkletNodeRef.current = null;
         mediaStreamSourceRef.current = null;
 
-        inputAudioContextRef.current?.close();
-        inputAudioContextRef.current = null;
+        // Stop media tracks and close the input context
         mediaStreamRef.current?.getTracks().forEach(track => track.stop());
         mediaStreamRef.current = null;
+        if (inputAudioContextRef.current?.state !== 'closed') {
+            inputAudioContextRef.current?.close();
+        }
+        inputAudioContextRef.current = null;
         
+        // Stop any currently playing audio and clear the queue
         outputAudioSources.current.forEach(source => source.stop());
         outputAudioSources.current.clear();
-        outputAudioContextRef.current?.close();
+        if (outputAudioContextRef.current?.state !== 'closed') {
+            outputAudioContextRef.current?.close();
+        }
         outputAudioContextRef.current = null;
         nextAudioStartTime.current = 0;
     };
     
     const stopSimulation = async () => {
-        if (simulatorState !== 'active' && simulatorState !== 'processing_report') return;
+        // FIX: Add a guard to ensure this logic only runs if a simulation is active.
+        // This prevents multiple calls when the component unmounts or the session closes.
+        if (simulatorState !== 'active') return;
         
-        // Ensure state is set to processing for UI feedback
-        if (simulatorState === 'active') {
-            setSimulatorState('processing_report');
-        }
+        setSimulatorState('processing_report');
         
-        // 1. Clean up the audio pipeline first to stop sending data.
+        // FIX: The order here is critical to prevent the race condition.
+        // 1. Clean up the audio pipeline first to stop sending new data.
         cleanupAudio();
         
-        // 2. Now, close the WebSocket session.
-        sessionPromiseRef.current?.then(session => session.close());
-        sessionPromiseRef.current = null;
+        // 2. Now, tell the session to close and immediately nullify the promise reference.
+        // This prevents any in-flight worklet messages from trying to send data on a closing socket.
+        if (sessionPromiseRef.current) {
+            sessionPromiseRef.current.then(session => session.close());
+            sessionPromiseRef.current = null;
+        }
         
         try {
             // Only generate a report if there was actual interaction
@@ -242,7 +253,7 @@ const SpeakingSimulator: React.FC = () => {
         } catch (e: any) {
             setError(e.message || 'An error occurred while generating the analysis report.');
         } finally {
-            // Ensure state transitions to report view even if report generation fails
+            // Ensure state transitions to the report view even if report generation fails
             setSimulatorState('report');
         }
     };
@@ -250,6 +261,7 @@ const SpeakingSimulator: React.FC = () => {
     const startSimulation = async () => {
         if (!selectedScenario) return;
 
+        // Reset state for a new simulation
         setConversation([{ speaker: 'ai', text: selectedScenario.aiWelcome }]);
         setSimulatorState('active');
         setError('');
@@ -277,9 +289,17 @@ const SpeakingSimulator: React.FC = () => {
                             audioWorkletNodeRef.current = workletNode;
 
                             workletNode.port.onmessage = (event) => {
-                                const inputData = event.data;
-                                const pcmBlob = createBlob(inputData);
-                                sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
+                                // FIX: Check if the session promise still exists before sending.
+                                // When we stop the simulation, we nullify the ref, which stops this from running.
+                                if (sessionPromiseRef.current) {
+                                    const inputData = event.data;
+                                    const pcmBlob = createBlob(inputData);
+                                    sessionPromiseRef.current.then(session => {
+                                        if (session.isOpen()) {
+                                            session.sendRealtimeInput({ media: pcmBlob })
+                                        }
+                                    });
+                                }
                             };
                             source.connect(workletNode);
                             workletNode.connect(inputCtx.destination);
@@ -296,10 +316,8 @@ const SpeakingSimulator: React.FC = () => {
                             setConversation(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last?.speaker === 'user') {
-                                    // Append to existing user message
                                     return [...prev.slice(0, -1), { ...last, text: last.text + text }];
                                 }
-                                // Start a new user message
                                 return [...prev, { speaker: 'user', text }];
                             });
                         }
@@ -309,10 +327,8 @@ const SpeakingSimulator: React.FC = () => {
                             setConversation(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last?.speaker === 'ai') {
-                                    // Append to existing AI message
                                     return [...prev.slice(0, -1), { ...last, text: last.text + text }];
                                 }
-                                // Start a new AI message (the user's turn must be over)
                                 return [...prev, { speaker: 'ai', text }];
                             });
                         }
@@ -342,9 +358,12 @@ const SpeakingSimulator: React.FC = () => {
                     },
                     onclose: (e: CloseEvent) => {
                         console.debug('Live session closed.');
-                        // The stopSimulation function handles cleanup and UI state updates.
-                        // The check inside stopSimulation prevents it from running more than once.
-                        stopSimulation();
+                        // FIX: Only trigger a full stop if the closure was unexpected.
+                        // If we are already processing the report, it means we initiated the close,
+                        // so we don't need to do anything here. This prevents redundant calls.
+                        if (simulatorState === 'active') {
+                           stopSimulation();
+                        }
                     },
                 },
                 config: {
@@ -363,11 +382,13 @@ const SpeakingSimulator: React.FC = () => {
     
      // Cleanup on unmount
     useEffect(() => {
+        // This function will be called when the component is unmounted.
         return () => {
-            sessionPromiseRef.current?.then(session => session.close());
-            cleanupAudio();
+            // FIX: Use our robust stopSimulation function to handle all cleanup.
+            // This ensures that even if the user navigates away, the session and audio are properly terminated.
+            stopSimulation();
         }
-    }, []);
+    }, []); // The empty dependency array ensures this runs only on mount and unmount.
     
     // --- Render Functions ---
     const renderSelection = () => (
