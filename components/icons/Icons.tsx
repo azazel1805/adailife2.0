@@ -48,6 +48,7 @@ export const VerbToBeIcon: React.FC = () => <span role="img" aria-label="Verb to
 export const CrosswordIcon: React.FC = () => <span role="img" aria-label="Crossword icon" className="text-xl">🔡</span>;
 export const GrammarGapsIcon: React.FC = () => <span role="img" aria-label="Grammar Gaps icon" className="text-xl">✏️</span>;
 export const HangmanIcon: React.FC = () => <span role="img" aria-label="Hangman icon" className="text-xl">🧍</span>;
+export const WordSprintIcon: React.FC = () => <span role="img" aria-label="Word sprint icon" className="text-xl">🏃</span>;
 export const GamesIcon: React.FC = () => <span role="img" aria-label="Games icon" className="text-xl">🎮</span>;
 
 
