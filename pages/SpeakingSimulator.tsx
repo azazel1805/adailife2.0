@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
+import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { analyzeConversationForReport } from '../services/geminiService';
 import { Scenario, PerformanceReport, SimulatorChatMessage } from '../types';
 import Loader from '../components/Loader';
@@ -8,6 +8,12 @@ import { useChallenge } from '../context/ChallengeContext';
 import { SpeakerIcon, StopIcon } from '../components/icons/Icons';
 
 type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' | 'report';
+
+// FIX: Define a local type for the Gemini Blob structure as it's not exported from the library.
+type GeminiBlob = {
+  data: string;
+  mimeType: string;
+};
 
 // --- AudioWorklet Setup ---
 // This code runs in a separate, high-priority thread to process audio.
@@ -153,7 +159,7 @@ const SpeakingSimulator: React.FC = () => {
         return btoa(binary);
     };
 
-    const createBlob = (data: Float32Array): Blob => {
+    const createBlob = (data: Float32Array): GeminiBlob => {
         const l = data.length;
         const int16 = new Int16Array(l);
         for (let i = 0; i < l; i++) {
