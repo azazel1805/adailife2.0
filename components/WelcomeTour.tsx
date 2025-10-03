@@ -1,7 +1,5 @@
-
-
 import React, { useState } from 'react';
-import { PracticeToolsIcon, TutorIcon, DashboardIcon, ExamIcon, SkillTreeIcon, PlannerIcon } from './icons/Icons';
+import { PracticeToolsIcon, TutorIcon, DashboardIcon, DeconstructIcon, DictionaryIcon, GamesIcon, PlannerIcon } from './icons/Icons';
 
 interface WelcomeTourProps {
     onFinish: () => void;
@@ -10,43 +8,43 @@ interface WelcomeTourProps {
 const tourSteps = [
     {
         icon: '👋',
-        title: "ADAI Language Assistant'a Hoş Geldiniz!",
-        description: 'Öğrenme sürecinizi tamamen değiştirecek yapay zeka destekli yardımcınızla tanışın. Bu kısa tur, yenilenen özellikleri keşfetmenize yardımcı olacak.',
+        title: "ADAI'ye Tekrar Hoş Geldiniz!",
+        description: 'Öğrenme deneyiminizi daha da zenginleştirmek için eklediğimiz yeni ve geliştirilmiş özellikleri keşfedin. Bu kısa tur size yol gösterecek.',
     },
     {
         icon: <DashboardIcon />,
-        title: 'Kontrol Paneli: Strateji Merkeziniz',
-        description: "Güne Dashboard'dan başlayın. Günlük hedeflerinizi belirleyin, ilerlemenizi takip edin ve genel durumunuzu bir bakışta görün. Motivasyonunuzu her zaman yüksek tutun!",
-    },
-    {
-        icon: <ExamIcon />,
-        title: 'Odaklı Analiz Araçları',
-        description: 'Paragraf analizi, cümle sıralama ve çeviri gibi araçlarla belirli becerilerinizi derinlemesine geliştirin. Bu bölüm, zayıf yönlerinizi güçlendirmeniz için tasarlandı.',
-    },
-    {
-        icon: <SkillTreeIcon />,
-        title: 'Yetenek Ağacınızla Gelişiminizi İzleyin',
-        description: 'Yaptığınız pratiklere göre genel dil becerilerindeki güçlü ve zayıf yönlerinizi görsel olarak takip edin. Hangi konuya odaklanmanız gerektiğini anında görün.',
-    },
-    {
-        icon: <PlannerIcon />,
-        title: 'Akıllı Planlayıcı ile Verimli Çalışın',
-        description: 'Performansınıza göre size özel hazırlanan haftalık çalışma programları ile hedeflerinize daha hızlı ulaşın.',
-    },
-    {
-        icon: <TutorIcon />,
-        title: 'Kişisel Rehberiniz: AI Eğitmen',
-        description: "Aklınıza takılan her konuda 7/24 yanınızdaki kişisel AI Eğitmeniniz Onur'a danışın.",
+        title: 'Kontrol Paneli: Günlük Merkeziniz',
+        description: "Güne buradan başlayın. Günlük hedeflerinizi belirleyin, kelime dağarcığınızı görün ve en son başarımlarınızı kutlayın. Motivasyonunuzu her zaman yüksek tutun!",
     },
     {
         icon: <PracticeToolsIcon />,
-        title: 'Kapsamlı Pratik Araçları',
-        description: "Metin Analizi'nden Konuşma Simülatörü'ne kadar 4 temel dil becerinizi ve tekniğinizi geliştirecek onlarca araç sizi bekliyor.",
+        title: 'Temel Becerileri Geliştirin',
+        description: "'Pratik Araçları' ile konuşma, yazma, dinleme ve okuma becerilerinizi geliştirin. Konuşma Simülatörü ve Yaratıcı Yazma Partneri gibi araçlarla interaktif pratik yapın.",
+    },
+    {
+        icon: <DeconstructIcon />,
+        title: 'Derinlemesine Dil Analizi',
+        description: "Metinleri ve cümleleri 'Metin Analizi' ve 'Cümle Görselleştirici' gibi araçlarla parçalarına ayırın. Soru Analisti ile sınav sorularının mantığını çözün.",
+    },
+    {
+        icon: <GamesIcon />,
+        title: 'Oyunlarla Öğrenin!',
+        description: "Yeni 'Oyunlar' bölümüyle öğrenmeyi eğlenceye dönüştürün! Kelime Bulmaca, Adam Asmaca ve Word Sprint gibi oyunlarla kelime ve gramer bilginizi test edin.",
+    },
+    {
+        icon: <DictionaryIcon />,
+        title: 'Kelime ve Okuma Dünyası',
+        description: "Geleneksel sözlüğün yanı sıra, 'Görsel Sözlük' ile nesnelerin İngilizce karşılıklarını kameranızla öğrenin. 'Kelime Hikayesi' ile kelimeleri bağlam içinde görün.",
+    },
+    {
+        icon: <PlannerIcon />,
+        title: 'Akıllı Rehberlik: Planlayıcı ve Eğitmen',
+        description: "Performansınıza göre size özel bir yol haritası çizen 'Akıllı Planlayıcı' ile verimli çalışın. Aklınıza takılan her şeyi kişisel 'AI Eğitmeniniz' Onur'a sorun.",
     },
     {
         icon: '🚀',
-        title: 'Yolculuğunuz Başlıyor!',
-        description: 'Artık tüm araçlara hakimsiniz. Potansiyelinizi ortaya çıkarma zamanı. Başarılar dileriz!',
+        title: 'Keşfetmeye Hazırsınız!',
+        description: 'Artık tüm yeni araçlara hakimsiniz. Potansiyelinizi ortaya çıkarma ve İngilizce hedeflerinize ulaşma zamanı. Başarılar dileriz!',
     }
 ];
 
