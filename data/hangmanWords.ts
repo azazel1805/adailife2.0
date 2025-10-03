@@ -5,6 +5,7 @@ export interface HangmanWord {
 
 export const hangmanWords: { [key: string]: HangmanWord[] } = {
   'Kolay': [
+    // Original Words
     { word: 'CAT', definition: 'A small domesticated carnivorous mammal with soft fur.' },
     { word: 'DOG', definition: 'A domesticated carnivorous mammal that typically has a long snout.' },
     { word: 'SUN', definition: 'The star around which the earth orbits.' },
@@ -24,9 +25,31 @@ export const hangmanWords: { [key: string]: HangmanWord[] } = {
     { word: 'RAIN', definition: 'Moisture condensed from the atmosphere that falls visibly in separate drops.' },
     { word: 'SONG', definition: 'A short poem or other set of words set to music.' },
     { word: 'STAR', definition: 'A fixed luminous point in the night sky that is a large, remote incandescent body.' },
-    { word: 'WATER', definition: 'A colorless, transparent, odorless liquid that forms the seas, lakes, rivers, and rain.' }
+    { word: 'WATER', definition: 'A colorless, transparent, odorless liquid that forms the seas, lakes, rivers, and rain.' },
+    // New Words
+    { word: 'BED', definition: 'A piece of furniture used for sleep or rest.' },
+    { word: 'CAR', definition: 'A road vehicle, typically with four wheels.' },
+    { word: 'CUP', definition: 'A small bowl-shaped container for drinking from.' },
+    { word: 'DOOR', definition: 'A hinged or sliding barrier at the entrance to a building or room.' },
+    { word: 'EGG', definition: 'An oval object laid by female birds, often eaten as food.' },
+    { word: 'FIRE', definition: 'Combustion or burning, in which substances combine chemically with oxygen.' },
+    { word: 'FOUR', definition: 'The number equivalent to the sum of two and two.' },
+    { word: 'GOLD', definition: 'A yellow precious metal, the chemical element of atomic number 79.' },
+    { word: 'ICE', definition: 'Frozen water, a brittle transparent crystalline solid.' },
+    { word: 'KEY', definition: 'A small piece of shaped metal used to operate a lock.' },
+    { word: 'LEG', definition: 'Each of the limbs on which a person or animal walks and stands.' },
+    { word: 'MILK', definition: 'An opaque white fluid rich in fat and protein, secreted by female mammals.' },
+    { word: 'MOON', definition: 'The natural satellite of the earth.' },
+    { word: 'PIG', definition: 'A stout-bodied domesticated ungulate with a long mobile snout.' },
+    { word: 'PLAY', definition: 'Engage in activity for enjoyment and recreation.' },
+    { word: 'ROAD', definition: 'A wide way leading from one place to another, especially one with a prepared surface.' },
+    { word: 'SHIP', definition: 'A large boat for transporting people or goods by sea or other large bodies of water.' },
+    { word: 'SNOW', definition: 'Atmospheric water vapor frozen into ice crystals and falling in light white flakes.' },
+    { word: 'TIME', definition: 'The indefinite continued progress of existence and events in the past, present, and future.' },
+    { word: 'WIND', definition: 'The perceptible natural movement of the air.' },
   ],
   'Orta': [
+    // Original Words
     { word: 'APPLE', definition: 'The round fruit of a tree of the rose family.' },
     { word: 'BEACH', definition: 'A pebbly or sandy shore, especially by the ocean.' },
     { word: 'CHAIR', definition: 'A separate seat for one person, typically with a back and four legs.' },
@@ -46,9 +69,31 @@ export const hangmanWords: { [key: string]: HangmanWord[] } = {
     { word: 'TABLE', definition: 'A piece of furniture with a flat top and one or more legs.' },
     { word: 'TIGER', definition: 'A very large solitary cat with a yellow-brown coat striped with black.' },
     { word: 'WHITE', definition: 'The color of milk or fresh snow.' },
-    { word: 'WOMAN', definition: 'An adult female human being.' }
+    { word: 'WOMAN', definition: 'An adult female human being.' },
+    // New Words
+    { word: 'BREAD', definition: 'Food made of flour, water, and yeast mixed together and baked.' },
+    { word: 'BRAIN', definition: 'An organ of soft nervous tissue contained in the skull of vertebrates.' },
+    { word: 'CLOCK', definition: 'An instrument to measure and indicate time.' },
+    { word: 'CLOUD', definition: 'A visible mass of water droplets or ice crystals suspended in the atmosphere.' },
+    { word: 'DANCE', definition: 'Move rhythmically to music.' },
+    { word: 'DREAM', definition: 'A series of thoughts, images, and sensations occurring in a person\'s mind during sleep.' },
+    { word: 'GHOST', definition: 'An apparition of a dead person which is believed to appear to the living.' },
+    { word: 'GRASS', definition: 'Vegetation consisting of typically short plants with long, narrow leaves.' },
+    { word: 'HEART', definition: 'A hollow muscular organ that pumps blood through the circulatory system.' },
+    { word: 'HORSE', definition: 'A large plant-eating domesticated mammal with solid hoofs and a flowing mane and tail.' },
+    { word: 'LIGHT', definition: 'The natural agent that stimulates sight and makes things visible.' },
+    { word: 'MONEY', definition: 'A current medium of exchange in the form of coins and banknotes.' },
+    { word: 'NIGHT', definition: 'The period of darkness in each twenty-four hours; the time from sunset to sunrise.' },
+    { word: 'PENCIL', definition: 'An instrument for writing or drawing, consisting of a thin stick of graphite.' },
+    { word: 'PLANT', definition: 'A living organism of the kind exemplified by trees, shrubs, and herbs.' },
+    { word: 'QUEEN', definition: 'The female ruler of an independent state.' },
+    { word: 'SCHOOL', definition: 'An institution for educating children.' },
+    { word: 'SUGAR', definition: 'A sweet crystalline substance obtained from various plants.' },
+    { word: 'TRAIN', definition: 'A series of connected railway carriages or wagons moved by an engine.' },
+    { word: 'WORLD', definition: 'The earth, together with all of its countries and peoples.' },
   ],
   'Zor': [
+    // Original Words
     { word: 'BEAUTIFUL', definition: 'Pleasing the senses or mind aesthetically.' },
     { word: 'CHALLENGE', definition: 'A call to take part in a contest or competition.' },
     { word: 'COMPUTER', definition: 'An electronic device for storing and processing data.' },
@@ -68,6 +113,27 @@ export const hangmanWords: { [key: string]: HangmanWord[] } = {
     { word: 'UNIVERSITY', definition: 'An institution of higher (or tertiary) education and research which awards academic degrees.' },
     { word: 'WONDERFUL', definition: 'Inspiring delight, pleasure, or admiration; extremely good; marvelous.' },
     { word: 'YESTERDAY', definition: 'On the day before today.' },
-    { word: 'CHOCOLATE', definition: 'A food preparation in the form of a paste or solid block made from roasted and ground cacao seeds.' }
+    { word: 'CHOCOLATE', definition: 'A food preparation in the form of a paste or solid block made from roasted and ground cacao seeds.' },
+    // New Words
+    { word: 'ADVENTURE', definition: 'An unusual and exciting or daring experience.' },
+    { word: 'BICYCLE', definition: 'A vehicle composed of two wheels held in a frame one behind the other.' },
+    { word: 'CELEBRATE', definition: 'Acknowledge (a significant or happy day or event) with a social gathering or enjoyable activity.' },
+    { word: 'DICTIONARY', definition: 'A book or electronic resource that lists the words of a language and gives their meaning.' },
+    { word: 'ELEPHANT', definition: 'A very large plant-eating mammal with a prehensile trunk, long curved ivory tusks, and large ears.' },
+    { word: 'EXPERIENCE', definition: 'Practical contact with and observation of facts or events.' },
+    { word: 'FURNITURE', definition: 'The movable articles that are used to make a room or building suitable for living or working in.' },
+    { word: 'GIRAFFE', definition: 'A large African mammal with a very long neck and forelegs.' },
+    { word: 'HAPPINESS', definition: 'The state of being happy.' },
+    { word: 'IMAGINATION', definition: 'The faculty or action of forming new ideas, or images or concepts not present to the senses.' },
+    { word: 'INTELLIGENT', definition: 'Having or showing a high degree of mental ability.' },
+    { word: 'KEYBOARD', definition: 'A panel of keys that operate a computer or typewriter.' },
+    { word: 'LIBRARY', definition: 'A building or room containing collections of books, periodicals, and sometimes films.' },
+    { word: 'MYSTERIOUS', definition: 'Difficult or impossible to understand, explain, or identify.' },
+    { word: 'PHOTOGRAPH', definition: 'A picture made using a camera.' },
+    { word: 'QUESTION', definition: 'A sentence worded or expressed so as to elicit information.' },
+    { word: 'SYMPHONY', definition: 'An elaborate musical composition for full orchestra.' },
+    { word: 'TREASURE', definition: 'A quantity of precious metals, gems, or other valuable objects.' },
+    { word: 'UNIVERSE', definition: 'All existing matter and space considered as a whole; the cosmos.' },
+    { word: 'VEGETABLE', definition: 'A plant or part of a plant used as food.' },
   ]
 };
