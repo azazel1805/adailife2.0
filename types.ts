@@ -1,7 +1,7 @@
 
 
 
-export type Tab = 'dashboard' | 'planner' | 'analyzer' | 'tutor' | 'reading' | 'deconstruction' | 'diagrammer' | 'cohesion_analyzer' | 'writing' | 'listening' | 'news' | 'dictionary' | 'vocabulary' | 'history' | 'pdf_importer' | 'vocabulary_story_weaver' | 'skill_tree' | 'sentence_ordering' | 'speaking_simulator' | 'phrasal_verb_deconstructor' | 'admin' | 'translation_analyst' | 'dialogue_completion' | 'visual_reading' | 'creative_writing' | 'pragmatic_analyzer' | 'visual_dictionary' | 'basics' | 'tenses' | 'crossword';
+export type Tab = 'dashboard' | 'planner' | 'analyzer' | 'tutor' | 'reading' | 'deconstruction' | 'diagrammer' | 'cohesion_analyzer' | 'writing' | 'listening' | 'news' | 'dictionary' | 'vocabulary' | 'history' | 'pdf_importer' | 'vocabulary_story_weaver' | 'skill_tree' | 'sentence_ordering' | 'speaking_simulator' | 'phrasal_verb_deconstructor' | 'admin' | 'translation_analyst' | 'dialogue_completion' | 'visual_reading' | 'creative_writing' | 'pragmatic_analyzer' | 'visual_dictionary' | 'basics' | 'tenses' | 'crossword' | 'grammar_gaps';
 
 export interface AnalysisResult {
   soruTipi?: string;
