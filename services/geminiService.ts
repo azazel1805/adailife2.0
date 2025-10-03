@@ -7,7 +7,7 @@ import {
     ReadingAnalysisResult, WritingAnalysis, ParagraphImprovementResult, ListeningTask, PassageDeconstructionResult, 
     GroundingChunk, ParagraphCohesionAnalysis, SentenceDiagram, SentenceOrderingExercise, PerformanceReport, 
     PhrasalVerbDeconstructionResult, WeatherData, VisualDescriptionAnalysis, DictionaryEntry,
-    Scenario, SimulatorChatMessage, PragmaticAnalysisResult, PerformanceStats, IdentifiedObject, AffixData, CrosswordData
+    Scenario, SimulatorChatMessage, PragmaticAnalysisResult, PerformanceStats, IdentifiedObject, AffixData, CrosswordData, ConceptWeaverAnalysis
 } from '../types';
 import { parseGeneratedQuestions, parseClozeTestJsonResponse } from "../utils/questionParser";
 
@@ -780,6 +780,40 @@ const CROSSWORD_SCHEMA = {
     required: ['size', 'grid', 'clues'],
 };
 
+const CONCEPT_WEAVER_ANALYSIS_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        overallFeedback: { type: Type.STRING, description: "General feedback on the story in Turkish." },
+        grammarFeedback: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    error: { type: Type.STRING, description: "The original grammatical error in English." },
+                    correction: { type: Type.STRING, description: "The corrected version in English." },
+                    explanation: { type: Type.STRING, description: "A brief explanation of the grammar rule in Turkish." }
+                },
+                required: ['error', 'correction', 'explanation']
+            }
+        },
+        vocabularySuggestions: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    original: { type: Type.STRING, description: "The original word/phrase in English." },
+                    suggestion: { type: Type.STRING, description: "A better vocabulary suggestion in English." },
+                    reason: { type: Type.STRING, description: "The reason for the suggestion in Turkish." }
+                },
+                required: ['original', 'suggestion', 'reason']
+            }
+        },
+        creativityScore: { type: Type.NUMBER, description: "A score from 1 to 10 on how creatively the words were used." },
+        creativityFeedback: { type: Type.STRING, description: "Feedback on the creativity of word usage, in Turkish." }
+    },
+    required: ['overallFeedback', 'grammarFeedback', 'vocabularySuggestions', 'creativityScore', 'creativityFeedback']
+};
+
 // --- Helper function for streaming responses ---
 async function* streamToAsyncIterator(stream: AsyncGenerator<GenerateContentResponse, any, unknown>): AsyncGenerator<string, void, unknown> {
     for await (const chunk of stream) {
@@ -1389,12 +1423,65 @@ export const generateGrammarGapsStory = async (difficulty: string): Promise<stri
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash-lite',
             contents: `Create a short story for an English learner. The story's language complexity should be ${complexity}. The story must contain between ${placeholderCount} placeholders. Replace key words (nouns, verbs, adjectives, adverbs) with placeholders in the format [PART_OF_SPEECH: optional hint] or [PART_OF_SPEECH]. For example: [NOUN], [VERB: past tense], [ADJECTIVE: color]. Do not use markdown. Respond with only the story text containing the placeholders.`,
         });
         return response.text.trim();
     } catch (error) {
         console.error("Error generating Grammar Gaps story:", error);
         throw new Error("Hikaye şablonu oluşturulurken bir hata oluştu.");
+    }
+};
+
+export const generateConceptWeaverWords = async (): Promise<{ word: string, meaning: string }[]> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: "Generate 3 random, unrelated, intermediate-level English nouns or verbs. For each word, provide its most common Turkish meaning. Provide the response as a JSON array of 3 objects, where each object has a 'word' (string) and 'meaning' (string) property. Example: [{\"word\": \"Bicycle\", \"meaning\": \"Bisiklet\"}, {\"word\": \"Moon\", \"meaning\": \"Ay\"}, {\"word\": \"Cheese\", \"meaning\": \"Peynir\"}]",
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            word: { type: Type.STRING },
+                            meaning: { type: Type.STRING }
+                        },
+                        required: ["word", "meaning"]
+                    }
+                },
+            }
+        });
+        const result = JSON.parse(response.text);
+        if (Array.isArray(result) && result.length === 3 && result.every(item => item.word && item.meaning)) {
+            return result;
+        }
+        throw new Error("Invalid format received from API.");
+    } catch (error) {
+        console.error("Error generating concept weaver words:", error);
+        throw new Error("Oyun için kelimeler oluşturulamadı.");
+    }
+};
+
+export const analyzeConceptWeaverStory = async (words: string[], story: string): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Act as an English writing coach. Analyze the following short story written by a user. The user was challenged to use these three words: ${JSON.stringify(words)}.
+Your analysis must be in JSON format according to the schema.
+Evaluate the story based on grammar, vocabulary, fluency, and how creatively the given words were used. All feedback text (overall feedback, explanations, reasons, creativity feedback) must be in Turkish.
+
+Story:
+"${story}"`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: CONCEPT_WEAVER_ANALYSIS_SCHEMA,
+            }
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error analyzing concept weaver story:", error);
+        throw new Error("Hikaye analizi sırasında bir hata oluştu.");
     }
 };
