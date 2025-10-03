@@ -1361,7 +1361,7 @@ export const generateCrossword = async (words: VocabularyItem[]): Promise<string
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash-lite',
             contents: `Create a compact crossword puzzle using some or all of the following English words. The clues must be their corresponding Turkish meanings. The puzzle should be solvable and well-connected. The output must be a JSON object that strictly follows the provided schema. The grid should use single uppercase letters for answers and 'null' for empty cells. The grid must be a rectangular 2D array. The clue numbers should be assigned correctly based on the grid layout. \n\nWords and Meanings:\n{${wordList}}`,
             config: {
                 responseMimeType: "application/json",
