@@ -7,7 +7,7 @@ import {
     ReadingAnalysisResult, WritingAnalysis, ParagraphImprovementResult, ListeningTask, PassageDeconstructionResult, 
     GroundingChunk, ParagraphCohesionAnalysis, SentenceDiagram, SentenceOrderingExercise, PerformanceReport, 
     PhrasalVerbDeconstructionResult, WeatherData, VisualDescriptionAnalysis, DictionaryEntry,
-    Scenario, SimulatorChatMessage, PragmaticAnalysisResult, PerformanceStats, IdentifiedObject, AffixData
+    Scenario, SimulatorChatMessage, PragmaticAnalysisResult, PerformanceStats, IdentifiedObject, AffixData, CrosswordData
 } from '../types';
 import { parseGeneratedQuestions, parseClozeTestJsonResponse } from "../utils/questionParser";
 
@@ -718,6 +718,68 @@ const AFFIX_SCHEMA = {
     required: ["affix", "type", "meaning", "examples"]
 };
 
+const CROSSWORD_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        size: {
+            type: Type.OBJECT,
+            properties: {
+                rows: { type: Type.NUMBER },
+                cols: { type: Type.NUMBER },
+            },
+            required: ['rows', 'cols'],
+        },
+        grid: {
+            type: Type.ARRAY,
+            description: "2D array representing the grid. Use single letters for cells with answers, and null for empty black cells.",
+            items: {
+                type: Type.ARRAY,
+                items: {
+                    type: Type.STRING,
+                    nullable: true,
+                },
+            },
+        },
+        clues: {
+            type: Type.OBJECT,
+            properties: {
+                across: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            number: { type: Type.NUMBER },
+                            clue: { type: Type.STRING },
+                            answer: { type: Type.STRING },
+                            row: { type: Type.NUMBER },
+                            col: { type: Type.NUMBER },
+                            direction: { type: Type.STRING, description: "Must be 'across'" },
+                        },
+                        required: ['number', 'clue', 'answer', 'row', 'col', 'direction'],
+                    },
+                },
+                down: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            number: { type: Type.NUMBER },
+                            clue: { type: Type.STRING },
+                            answer: { type: Type.STRING },
+                            row: { type: Type.NUMBER },
+                            col: { type: Type.NUMBER },
+                            direction: { type: Type.STRING, description: "Must be 'down'" },
+                        },
+                        required: ['number', 'clue', 'answer', 'row', 'col', 'direction'],
+                    },
+                },
+            },
+            required: ['across', 'down'],
+        },
+    },
+    required: ['size', 'grid', 'clues'],
+};
+
 // --- Helper function for streaming responses ---
 async function* streamToAsyncIterator(stream: AsyncGenerator<GenerateContentResponse, any, unknown>): AsyncGenerator<string, void, unknown> {
     for await (const chunk of stream) {
@@ -1291,5 +1353,24 @@ export const identifyObjectsInImage = async (base64Image: string, mimeType: stri
     } catch (error) {
         console.error("Error identifying objects in image:", error);
         throw new Error("Görseldeki nesneler tanımlanırken bir hata oluştu.");
+    }
+};
+
+export const generateCrossword = async (words: VocabularyItem[]): Promise<string> => {
+    const wordList = words.map(item => `"${item.word}": "${item.meaning}"`).join(', ');
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Create a compact crossword puzzle using some or all of the following English words. The clues must be their corresponding Turkish meanings. The puzzle should be solvable and well-connected. The output must be a JSON object that strictly follows the provided schema. The grid should use single uppercase letters for answers and 'null' for empty cells. The grid must be a rectangular 2D array. The clue numbers should be assigned correctly based on the grid layout. \n\nWords and Meanings:\n{${wordList}}`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: CROSSWORD_SCHEMA,
+            }
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating crossword:", error);
+        throw new Error("Bulmaca oluşturulurken bir hata oluştu. Kelime listenizle uyumlu bir bulmaca oluşturulamadı.");
     }
 };
