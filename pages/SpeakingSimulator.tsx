@@ -1,39 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { analyzeConversationForReport } from '../services/geminiService';
+import type { Chat } from '@google/genai';
+import { analyzeConversationForReport, createSpeakingSimulatorSession } from '../services/geminiService';
 import { Scenario, PerformanceReport, SimulatorChatMessage } from '../types';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { useChallenge } from '../context/ChallengeContext';
-import { SpeakerIcon, StopIcon } from '../components/icons/Icons';
 
 type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' | 'report';
-
-// Define a local type for the Gemini Blob structure as it's not exported from the library.
-type GeminiBlob = {
-  data: string;
-  mimeType: string;
-};
-
-// --- AudioWorklet Setup ---
-const workletCode = `
-class AudioProcessor extends AudioWorkletProcessor {
-  process(inputs) {
-    const input = inputs[0];
-    if (input.length > 0) {
-      const channel = input[0];
-      if (channel) {
-        this.port.postMessage(channel);
-      }
-    }
-    return true; // Keep the processor alive.
-  }
-}
-registerProcessor('audio-processor', AudioProcessor);
-`;
-const workletBlob = new Blob([workletCode], { type: 'application/javascript' });
-const workletURL = URL.createObjectURL(workletBlob);
-
 
 // --- Static Scenario Data ---
 const scenarios: Scenario[] = [
@@ -137,97 +110,126 @@ const SpeakingSimulator: React.FC = () => {
     const [error, setError] = useState('');
     const { trackAction } = useChallenge();
 
-    // --- Audio & Live API Refs ---
-    const sessionPromiseRef = useRef<Promise<any> | null>(null);
-    const isSessionActiveRef = useRef<boolean>(false); // Our definitive source of truth for session state
-    const inputAudioContextRef = useRef<AudioContext | null>(null);
-    const outputAudioContextRef = useRef<AudioContext | null>(null);
-    const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
-    const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-    const mediaStreamRef = useRef<MediaStream | null>(null);
-    const outputAudioSources = useRef<Set<AudioBufferSourceNode>>(new Set());
-    const nextAudioStartTime = useRef<number>(0);
+    // --- Web Speech API State ---
+    const [isListening, setIsListening] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [interimTranscript, setInterimTranscript] = useState('');
+    const chatSessionRef = useRef<Chat | null>(null);
+    const recognitionRef = useRef<any | null>(null); // SpeechRecognition object
 
-    // --- Audio Helper Functions ---
-    const encode = (bytes: Uint8Array) => {
-        let binary = '';
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
+    // --- Setup Web Speech API ---
+    useEffect(() => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            setError("Sorry, your browser doesn't support speech recognition. Please try Google Chrome or Edge.");
+            return;
         }
-        return btoa(binary);
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = true;
+        recognition.continuous = false;
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onerror = (event: any) => {
+            console.error("Speech recognition error:", event.error);
+            setError(`Speech recognition error: ${event.error}. Please check microphone permissions.`);
+            setIsListening(false);
+        };
+
+        recognition.onresult = (event: any) => {
+            let interim = '';
+            let final = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    final += event.results[i][0].transcript;
+                } else {
+                    interim += event.results[i][0].transcript;
+                }
+            }
+            setInterimTranscript(interim);
+            if (final.trim()) {
+                handleUserSpeech(final.trim());
+            }
+        };
+
+        recognitionRef.current = recognition;
+
+        // Cleanup synthesis on unmount
+        return () => window.speechSynthesis.cancel();
+    }, []);
+
+    const speakText = (text: string) => {
+        return new Promise<void>((resolve, reject) => {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            const voices = window.speechSynthesis.getVoices();
+            const femaleVoice = voices.find(voice => voice.lang === 'en-US' && /female/i.test(voice.name));
+            utterance.voice = femaleVoice || voices.find(voice => voice.lang === 'en-US') || null;
+
+            utterance.onstart = () => setIsSpeaking(true);
+            utterance.onend = () => {
+                setIsSpeaking(false);
+                resolve();
+            };
+            utterance.onerror = (e) => {
+                console.error("Speech synthesis error", e);
+                setError("Could not play audio response.");
+                setIsSpeaking(false);
+                reject(e);
+            };
+
+            window.speechSynthesis.speak(utterance);
+        });
     };
 
-    const createBlob = (data: Float32Array): GeminiBlob => {
-        const l = data.length;
-        const int16 = new Int16Array(l);
-        for (let i = 0; i < l; i++) {
-            const s = Math.max(-1, Math.min(1, data[i]));
-            int16[i] = s < 0 ? s * 32768 : s * 32767;
+    const handleUserSpeech = async (transcript: string) => {
+        if (!chatSessionRef.current) return;
+        setInterimTranscript('');
+        setConversation(prev => [...prev, { speaker: 'user', text: transcript }]);
+        
+        try {
+            const response = await chatSessionRef.current.sendMessage({ message: transcript });
+            const aiText = response.text;
+            
+            setConversation(prev => [...prev, { speaker: 'ai', text: aiText }]);
+            await speakText(aiText);
+        } catch (e: any) {
+            setError(e.message || "Failed to get AI response.");
         }
-        return { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' };
     };
-    
-    const decode = (base64: string) => {
-      const binaryString = atob(base64);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      return bytes;
-    }
 
-    const decodeAudioData = async (data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> => {
-      const dataInt16 = new Int16Array(data.buffer);
-      const frameCount = dataInt16.length / numChannels;
-      const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
-      for (let channel = 0; channel < numChannels; channel++) {
-        const channelData = buffer.getChannelData(channel);
-        for (let i = 0; i < frameCount; i++) {
-          channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-        }
-      }
-      return buffer;
-    }
+    const startSimulation = async () => {
+        if (!selectedScenario) return;
+        
+        chatSessionRef.current = createSpeakingSimulatorSession(selectedScenario);
+        
+        setConversation([{ speaker: 'ai', text: selectedScenario.aiWelcome }]);
+        setSimulatorState('active');
+        setError('');
+        
+        await speakText(selectedScenario.aiWelcome);
+    };
 
     const stopSimulation = async () => {
-        // Use our immediate ref flag as the guard to prevent multiple runs.
-        if (!isSessionActiveRef.current) return;
-
-        // Set our flag to false immediately. This is a synchronous action.
-        isSessionActiveRef.current = false;
+        if (simulatorState !== 'active') return;
         
         setSimulatorState('processing_report');
-
-        // Forcefully stop the audio pipeline first to cut off the data source.
-        audioWorkletNodeRef.current?.disconnect();
-        mediaStreamSourceRef.current?.disconnect();
-        mediaStreamRef.current?.getTracks().forEach(track => track.stop());
-        
-        // Now, it's safe to close the WebSocket session.
-        sessionPromiseRef.current?.then(session => session.close());
-        sessionPromiseRef.current = null;
-
-        // Perform final cleanup of all audio resources.
-        if (inputAudioContextRef.current?.state !== 'closed') {
-            inputAudioContextRef.current?.close();
-        }
-        outputAudioSources.current.forEach(source => source.stop());
-        outputAudioSources.current.clear();
-        if (outputAudioContextRef.current?.state !== 'closed') {
-            outputAudioContextRef.current?.close();
-        }
+        window.speechSynthesis.cancel();
+        recognitionRef.current?.stop();
+        setIsListening(false);
+        setIsSpeaking(false);
 
         try {
-            if (conversation.length > 1) {
+            if (conversation.length > 1) { 
                 const reportText = await analyzeConversationForReport(selectedScenario!, conversation);
                 const reportJson: PerformanceReport = JSON.parse(reportText);
                 setReport(reportJson);
                 trackAction('speaking_simulator');
             } else {
-                setReport(null);
+                setReport(null); 
             }
         } catch (e: any) {
             setError(e.message || 'An error occurred while generating the analysis report.');
@@ -236,138 +238,22 @@ const SpeakingSimulator: React.FC = () => {
         }
     };
 
-    const startSimulation = async () => {
-        if (!selectedScenario) return;
-
-        setConversation([{ speaker: 'ai', text: selectedScenario.aiWelcome }]);
-        setSimulatorState('active');
-        setError('');
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaStreamRef.current = stream;
-            
-            // Set our session flag to true right before connecting.
-            isSessionActiveRef.current = true;
-
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            sessionPromiseRef.current = ai.live.connect({
-                model: 'gemini-2.5-flash-native-audio-preview-09-2025',
-                callbacks: {
-                    onopen: async () => {
-                        if (!isSessionActiveRef.current) return; // Guard against race condition on quick stop
-                        const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-                        inputAudioContextRef.current = inputCtx;
-                        
-                        try {
-                            await inputCtx.audioWorklet.addModule(workletURL);
-                            const source = inputCtx.createMediaStreamSource(stream);
-                            mediaStreamSourceRef.current = source;
-                            const workletNode = new AudioWorkletNode(inputCtx, 'audio-processor');
-                            audioWorkletNodeRef.current = workletNode;
-
-                            workletNode.port.onmessage = (event) => {
-                                // Use the ref flag as the primary check.
-                                if (isSessionActiveRef.current) {
-                                    const inputData = event.data;
-                                    const pcmBlob = createBlob(inputData);
-                                    sessionPromiseRef.current?.then(session => {
-                                        session.sendRealtimeInput({ media: pcmBlob });
-                                    }).catch(e => {
-                                        // This will catch errors if send is called while closing, preventing a crash.
-                                        console.warn("Could not send final audio packet:", e);
-                                    });
-                                }
-                            };
-                            source.connect(workletNode);
-                            workletNode.connect(inputCtx.destination);
-                        } catch (e) {
-                             console.error("Error setting up audio worklet:", e);
-                             setError('Audio processing setup failed.');
-                             stopSimulation();
-                        }
-                    },
-                    onmessage: async (message: LiveServerMessage) => {
-                         if (message.serverContent?.inputTranscription) {
-                            const text = message.serverContent.inputTranscription.text;
-                            setConversation(prev => {
-                                const last = prev[prev.length - 1];
-                                if (last?.speaker === 'user') {
-                                    return [...prev.slice(0, -1), { ...last, text: last.text + text }];
-                                }
-                                return [...prev, { speaker: 'user', text }];
-                            });
-                        }
-                        else if (message.serverContent?.outputTranscription) {
-                            const text = message.serverContent.outputTranscription.text;
-                            setConversation(prev => {
-                                const last = prev[prev.length - 1];
-                                if (last?.speaker === 'ai') {
-                                    return [...prev.slice(0, -1), { ...last, text: last.text + text }];
-                                }
-                                return [...prev, { speaker: 'ai', text }];
-                            });
-                        }
-                        
-                        const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-                        if (audioData) {
-                            if (!outputAudioContextRef.current || outputAudioContextRef.current.state === 'closed') {
-                                outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-                            }
-                            const ctx = outputAudioContextRef.current;
-                            nextAudioStartTime.current = Math.max(nextAudioStartTime.current, ctx.currentTime);
-                            const audioBuffer = await decodeAudioData(decode(audioData), ctx, 24000, 1);
-                            const source = ctx.createBufferSource();
-                            source.buffer = audioBuffer;
-                            source.connect(ctx.destination);
-                            source.addEventListener('ended', () => outputAudioSources.current.delete(source));
-                            source.start(nextAudioStartTime.current);
-                            nextAudioStartTime.current += audioBuffer.duration;
-                            outputAudioSources.current.add(source);
-                        }
-                    },
-                    onerror: (e: ErrorEvent) => {
-                        console.error('Live session error:', e);
-                        setError('A conversation session error occurred. Ending session automatically.');
-                        stopSimulation();
-                    },
-                    onclose: () => {
-                        console.debug('Live session closed.');
-                        // If the session closes unexpectedly, stopSimulation will clean everything up.
-                        // The guard inside stopSimulation prevents it from running redundantly.
-                        stopSimulation();
-                    },
-                },
-                config: {
-                    responseModalities: [Modality.AUDIO],
-                    inputAudioTranscription: {},
-                    outputAudioTranscription: {},
-                    systemInstruction: `You are an AI role-playing as a ${selectedScenario.aiRole}. Your goal is to have a natural conversation with the user, who is playing the role of a ${selectedScenario.userRole}. Act your part convincingly. Do not break character. Keep your responses concise and natural for a spoken conversation.`,
-                },
-            });
-
-        } catch (err) {
-            setError('Mikrofon erişimi reddedildi veya bulunamadı. Lütfen tarayıcı ayarlarınızı kontrol edin.');
-            setSimulatorState('briefing');
+    const handleMicClick = () => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+        } else if (!isSpeaking) {
+            recognitionRef.current?.start();
         }
     };
 
-    useEffect(() => {
-        // This is the component's cleanup function (runs on unmount).
-        return () => {
-            stopSimulation();
-        }
-    }, []);
-
-    // --- Render Functions (Restored to their full original state) ---
     const renderSelection = () => (
-        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold mb-2 text-text-primary">Konuşma Simülatörü 🎭</h2>
-            <p className="mb-4 text-text-secondary">Pratik yapmak istediğiniz bir senaryo seçin.</p>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800">
+            <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-50">Konuşma Simülatörü 🎭</h2>
+            <p className="mb-4 text-slate-500 dark:text-slate-400">Pratik yapmak istediğiniz bir senaryo seçin.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {scenarios.map(s => (
                     <button key={s.id} onClick={() => { setSelectedScenario(s); setSimulatorState('briefing'); }}
-                        className="p-6 bg-gray-100 dark:bg-gray-700 hover:bg-brand-secondary dark:hover:bg-brand-secondary hover:text-white rounded-lg text-left transition-all duration-200 transform hover:scale-105">
+                        className="p-6 bg-slate-100 dark:bg-slate-800 hover:bg-adai-primary dark:hover:bg-adai-primary hover:text-white dark:hover:text-white rounded-lg text-left transition-all duration-200 transform hover:scale-105">
                         <h3 className="font-bold text-lg">{s.title}</h3>
                         <p className="text-sm mt-1">{s.description}</p>
                         <span className={`mt-3 inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${s.difficulty === 'Kolay' ? 'bg-green-200 text-green-800' : s.difficulty === 'Orta' ? 'bg-yellow-200 text-yellow-800' : 'bg-red-200 text-red-800'}`}>
@@ -382,9 +268,9 @@ const SpeakingSimulator: React.FC = () => {
     const renderBriefing = () => {
         if (!selectedScenario) return null;
         return (
-            <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
-                <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario.title}</h2>
-                <div className="space-y-4 my-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800">
+                <h2 className="text-2xl font-bold mb-2 text-adai-primary">{selectedScenario.title}</h2>
+                <div className="space-y-4 my-4 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
                     <p><strong>🤖 AI Rolü:</strong> {selectedScenario.aiRole}</p>
                     <p><strong>👤 Senin Rolün:</strong> {selectedScenario.userRole}</p>
                     <div>
@@ -395,10 +281,10 @@ const SpeakingSimulator: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4">
-                    <button onClick={startSimulation} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md transition duration-300">
+                    <button onClick={startSimulation} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
                         Simülasyonu Başlat
                     </button>
-                    <button onClick={() => setSimulatorState('selection')} className="flex-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-3 px-4 rounded-md transition duration-300">
+                    <button onClick={() => setSimulatorState('selection')} className="flex-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold py-3 px-4 rounded-lg transition duration-300">
                         Geri Dön
                     </button>
                 </div>
@@ -407,44 +293,63 @@ const SpeakingSimulator: React.FC = () => {
     };
 
     const renderActive = () => (
-         <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
-             <h2 className="text-2xl font-bold mb-2 text-brand-primary">{selectedScenario?.title}</h2>
-             <div className="h-80 bg-gray-100 dark:bg-gray-700 rounded-lg p-4 overflow-y-auto space-y-3 mb-4">
+         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 flex flex-col h-[calc(100vh-12rem)] max-h-[700px]">
+             <h2 className="text-xl font-bold mb-4 text-adai-primary flex-shrink-0">{selectedScenario?.title}</h2>
+             <div className="h-full bg-slate-100 dark:bg-slate-800 rounded-lg p-4 overflow-y-auto space-y-3 mb-4 flex-grow">
                  {conversation.map((msg, i) => (
                      <div key={i} className={`flex items-end gap-2 ${msg.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
                          {msg.speaker === 'ai' && <span className="text-2xl">🤖</span>}
-                         <div className={`max-w-md p-3 rounded-2xl ${msg.speaker === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none'}`}>
+                         <div className={`max-w-md p-3 rounded-2xl ${msg.speaker === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
                              <p className="text-sm">{msg.text}</p>
                          </div>
                           {msg.speaker === 'user' && <span className="text-2xl">👤</span>}
                      </div>
                  ))}
+                 {interimTranscript && (
+                    <div className="flex items-end gap-2 justify-end">
+                        <div className="max-w-md p-3 rounded-2xl bg-blue-500 text-white rounded-br-none opacity-60">
+                            <p className="text-sm italic">{interimTranscript}</p>
+                        </div>
+                        <span className="text-2xl">👤</span>
+                    </div>
+                 )}
              </div>
-             <div className="text-center font-bold text-red-500 animate-pulse mb-4">
-                 🔴 KAYIT AKTİF
+             <div className="flex items-center justify-center gap-6 flex-shrink-0">
+                <button onClick={stopSimulation} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                    Bitir
+                </button>
+                <button onClick={handleMicClick} disabled={isSpeaking} 
+                    className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 text-white text-3xl shadow-lg
+                        ${isSpeaking ? 'bg-slate-400 cursor-not-allowed' : 
+                        isListening ? 'bg-red-500 animate-pulse' : 
+                        'bg-adai-primary hover:bg-adai-secondary'}`
+                    }
+                >
+                    🎤
+                </button>
+                <div className="w-24 text-center text-sm text-slate-500 dark:text-slate-400">
+                    {isSpeaking ? "AI konuşuyor..." : isListening ? "Dinleniyor..." : "Konuşmak için bas"}
+                </div>
              </div>
-             <button onClick={stopSimulation} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-md transition duration-300">
-                 Simülasyonu Bitir ve Rapor Al
-             </button>
          </div>
     );
     
     const renderReport = () => (
-        <div className="bg-bg-secondary p-6 rounded-lg shadow-lg space-y-6 flex flex-col max-h-[calc(100vh-12rem)]">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 space-y-6 flex flex-col max-h-[calc(100vh-12rem)]">
             <div className="flex-shrink-0">
-                <h2 className="text-2xl font-bold text-brand-primary">Performans Raporu</h2>
+                <h2 className="text-2xl font-bold text-adai-primary">Performans Raporu</h2>
             </div>
             {simulatorState === 'processing_report' ? <div className="flex-grow flex items-center justify-center"><Loader /></div> : (
                 report ? (
                     <div className="space-y-6 overflow-y-auto pr-4 flex-grow">
                         {/* Objective Completion */}
                         <div>
-                            <h3 className="text-lg font-semibold mb-2 text-text-primary">🎯 Hedef Tamamlama Durumu</h3>
+                            <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200">🎯 Hedef Tamamlama Durumu</h3>
                             <ul className="space-y-2">
                                 {report.objectiveCompletion.map((obj, i) => (
                                     <li key={i} className={`p-3 rounded-md text-sm ${obj.completed ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
-                                        <span className={`font-bold ${obj.completed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{obj.completed ? '✅ Tamamlandı:' : '❌ Tamamlanmadı:'}</span> <span className="text-text-primary">{obj.objective}</span>
-                                        <p className="text-xs italic mt-1 text-text-secondary">Gerekçe: {obj.reasoning}</p>
+                                        <span className={`font-bold ${obj.completed ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{obj.completed ? '✅ Tamamlandı:' : '❌ Tamamlanmadı:'}</span> <span className="text-slate-800 dark:text-slate-200">{obj.objective}</span>
+                                        <p className="text-xs italic mt-1 text-slate-600 dark:text-slate-400">Gerekçe: {obj.reasoning}</p>
                                     </li>
                                 ))}
                             </ul>
@@ -452,17 +357,17 @@ const SpeakingSimulator: React.FC = () => {
 
                         {/* Overall Feedback */}
                         <div>
-                            <h3 className="text-lg font-semibold mb-2 text-text-primary">💬 Genel Geri Bildirim</h3>
-                            <p className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-text-secondary">{report.overallFeedback}</p>
+                            <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200">💬 Genel Geri Bildirim</h3>
+                            <p className="text-sm bg-slate-100 dark:bg-slate-800 p-3 rounded-md text-slate-600 dark:text-slate-300">{report.overallFeedback}</p>
                         </div>
 
                         {/* Pronunciation Feedback */}
                         {report.pronunciationFeedback.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-text-primary">🗣️ Telaffuz İpuçları</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200">🗣️ Telaffuz İpuçları</h3>
                                 <ul className="space-y-2">
                                     {report.pronunciationFeedback.map((item, i) => (
-                                        <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-text-secondary">
+                                        <li key={i} className="text-sm bg-slate-100 dark:bg-slate-800 p-3 rounded-md text-slate-600 dark:text-slate-300">
                                             <strong className="text-purple-700 dark:text-purple-400">{item.word}:</strong> {item.feedback}
                                         </li>
                                     ))}
@@ -473,12 +378,12 @@ const SpeakingSimulator: React.FC = () => {
                         {/* Grammar Feedback */}
                         {report.grammarFeedback.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-text-primary">✍️ Dil Bilgisi Düzeltmeleri</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200">✍️ Dil Bilgisi Düzeltmeleri</h3>
                                 <ul className="space-y-2">
                                     {report.grammarFeedback.map((item, i) => (
-                                        <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
-                                            <p className="text-text-primary"><span className="text-red-600 dark:text-red-400 line-through">{item.error}</span> &rarr; <span className="text-green-600 dark:text-green-400 font-semibold">{item.correction}</span></p>
-                                            <p className="text-xs text-text-secondary mt-1">Açıklama: {item.explanation}</p>
+                                        <li key={i} className="text-sm bg-slate-100 dark:bg-slate-800 p-3 rounded-md">
+                                            <p className="text-slate-800 dark:text-slate-200"><span className="text-red-600 dark:text-red-400 line-through">{item.error}</span> &rarr; <span className="text-green-600 dark:text-green-400 font-semibold">{item.correction}</span></p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Açıklama: {item.explanation}</p>
                                         </li>
                                     ))}
                                 </ul>
@@ -488,23 +393,23 @@ const SpeakingSimulator: React.FC = () => {
                         {/* Vocabulary Suggestions */}
                         {report.vocabularySuggestions.length > 0 && (
                             <div>
-                                <h3 className="text-lg font-semibold mb-2 text-text-primary">💡 Kelime Önerileri</h3>
+                                <h3 className="text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200">💡 Kelime Önerileri</h3>
                                 <ul className="space-y-2">
                                     {report.vocabularySuggestions.map((item, i) => (
-                                        <li key={i} className="text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
-                                            <p className="text-text-primary">'{item.original}' yerine '{item.suggestion}' kullanabilirsin.</p>
-                                            <p className="text-xs text-text-secondary mt-1">Neden: {item.reason}</p>
+                                        <li key={i} className="text-sm bg-slate-100 dark:bg-slate-800 p-3 rounded-md">
+                                            <p className="text-slate-800 dark:text-slate-200">'{item.original}' yerine '{item.suggestion}' kullanabilirsin.</p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Neden: {item.reason}</p>
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                         )}
                     </div>
-                ) : <div className="flex-grow flex items-center justify-center text-text-secondary"><p>Analiz edilecek yeterli konuşma verisi bulunamadı.</p></div>
+                ) : <div className="flex-grow flex items-center justify-center text-slate-500 dark:text-slate-400"><p>Analiz edilecek yeterli konuşma verisi bulunamadı.</p></div>
             )}
             <div className="flex-shrink-0 pt-4">
                 <button onClick={() => { setSimulatorState('selection'); setReport(null); setConversation([]); }}
-                    className="w-full bg-brand-secondary hover:bg-brand-primary text-white font-bold py-3 px-4 rounded-md transition duration-300">
+                    className="w-full bg-adai-secondary hover:bg-adai-primary text-white font-bold py-3 px-4 rounded-lg transition duration-300">
                     Yeni Simülasyon
                 </button>
             </div>
