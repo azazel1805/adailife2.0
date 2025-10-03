@@ -9,6 +9,28 @@ import { SpeakerIcon, StopIcon } from '../components/icons/Icons';
 
 type SimulatorState = 'selection' | 'briefing' | 'active' | 'processing_report' | 'report';
 
+// --- AudioWorklet Setup ---
+// This code runs in a separate, high-priority thread to process audio.
+const workletCode = `
+class AudioProcessor extends AudioWorkletProcessor {
+  process(inputs) {
+    const input = inputs[0];
+    if (input.length > 0) {
+      const channel = input[0];
+      if (channel) {
+        // Send the Float32Array data back to the main thread.
+        this.port.postMessage(channel);
+      }
+    }
+    return true; // Keep the processor alive.
+  }
+}
+registerProcessor('audio-processor', AudioProcessor);
+`;
+const workletBlob = new Blob([workletCode], { type: 'application/javascript' });
+const workletURL = URL.createObjectURL(workletBlob);
+
+
 // --- Static Scenario Data ---
 const scenarios: Scenario[] = [
     {
@@ -115,7 +137,8 @@ const SpeakingSimulator: React.FC = () => {
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
-    const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+    const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
+    const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const outputAudioSources = useRef<Set<AudioBufferSourceNode>>(new Set());
     const nextAudioStartTime = useRef<number>(0);
@@ -168,8 +191,11 @@ const SpeakingSimulator: React.FC = () => {
 
     // --- Cleanup Functions ---
     const cleanupAudio = () => {
-        scriptProcessorRef.current?.disconnect();
-        scriptProcessorRef.current = null;
+        audioWorkletNodeRef.current?.disconnect();
+        mediaStreamSourceRef.current?.disconnect();
+        audioWorkletNodeRef.current = null;
+        mediaStreamSourceRef.current = null;
+
         inputAudioContextRef.current?.close();
         inputAudioContextRef.current = null;
         mediaStreamRef.current?.getTracks().forEach(track => track.stop());
@@ -221,20 +247,31 @@ const SpeakingSimulator: React.FC = () => {
             sessionPromiseRef.current = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
                 callbacks: {
-                    onopen: () => {
+                    onopen: async () => {
                         const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
                         inputAudioContextRef.current = inputCtx;
-                        const source = inputCtx.createMediaStreamSource(stream);
-                        const processor = inputCtx.createScriptProcessor(4096, 1, 1);
-                        scriptProcessorRef.current = processor;
+                        
+                        try {
+                            await inputCtx.audioWorklet.addModule(workletURL);
 
-                        processor.onaudioprocess = (audioEvent) => {
-                            const inputData = audioEvent.inputBuffer.getChannelData(0);
-                            const pcmBlob = createBlob(inputData);
-                            sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-                        };
-                        source.connect(processor);
-                        processor.connect(inputCtx.destination);
+                            const source = inputCtx.createMediaStreamSource(stream);
+                            mediaStreamSourceRef.current = source;
+
+                            const workletNode = new AudioWorkletNode(inputCtx, 'audio-processor');
+                            audioWorkletNodeRef.current = workletNode;
+
+                            workletNode.port.onmessage = (event) => {
+                                const inputData = event.data;
+                                const pcmBlob = createBlob(inputData);
+                                sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
+                            };
+                            source.connect(workletNode);
+                            workletNode.connect(inputCtx.destination);
+                        } catch (e) {
+                             console.error("Error setting up audio worklet:", e);
+                             setError('Audio processing setup failed.');
+                             stopSimulation();
+                        }
                     },
                     onmessage: async (message: LiveServerMessage) => {
                         // Handle user's transcription
@@ -267,7 +304,7 @@ const SpeakingSimulator: React.FC = () => {
                         // Handle AI's audio output
                         const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
                         if (audioData) {
-                            if (!outputAudioContextRef.current) {
+                            if (!outputAudioContextRef.current || outputAudioContextRef.current.state === 'closed') {
                                 outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
                             }
                             const ctx = outputAudioContextRef.current;
