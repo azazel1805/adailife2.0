@@ -111,9 +111,9 @@ const CreativeWritingPartner: React.FC = () => {
     const renderSetup = () => (
         <div className="max-w-2xl mx-auto space-y-6">
             <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
-                <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Creative Writing Partner ✒️</h2>
+                <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Yaratıcı Yazarlık  ✒️</h2>
                 <p className="mb-4 text-slate-500 dark:text-slate-400">
-                    Write something together with your AI writing partner, Alex. Choose a format, set a starting point, and let your creativity flow.
+                    Yapay zeka yazı ortağınız Alex ile birlikte bir şeyler yazın. Bir format seçin, bir başlangıç noktası belirleyin ve yaratıcılığınızı serbest bırakın.
                 </p>
                 
                 <div className="space-y-4">
