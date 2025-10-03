@@ -1,4 +1,7 @@
 
+
+
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Chat, LiveServerMessage } from '@google/genai';
 import { GoogleGenAI, Modality, Blob } from '@google/genai';
@@ -38,10 +41,6 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const outputAudioSources = useRef<Set<AudioBufferSourceNode>>(new Set());
     const nextAudioStartTime = useRef<number>(0);
-    const conversationStateRef = useRef(conversationState);
-    useEffect(() => {
-        conversationStateRef.current = conversationState;
-    }, [conversationState]);
 
     // --- Audio Helper Functions ---
     const encode = (bytes: Uint8Array) => {
@@ -88,21 +87,17 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
     
     // --- Live Session Cleanup ---
     const stopConversation = useCallback(() => {
-        if (conversationStateRef.current !== 'active') return;
-
-        // 1. Stop audio processing and mic input immediately to prevent new `sendRealtimeInput` calls.
-        scriptProcessorRef.current?.disconnect();
-        scriptProcessorRef.current = null;
-        mediaStreamRef.current?.getTracks().forEach(track => track.stop());
-        mediaStreamRef.current = null;
-
-        // 2. Now, it's safe to close the session.
+        if (conversationState !== 'active') return;
+        
         sessionPromiseRef.current?.then(session => session.close());
         sessionPromiseRef.current = null;
     
-        // 3. Clean up audio contexts and output sources.
+        scriptProcessorRef.current?.disconnect();
+        scriptProcessorRef.current = null;
         inputAudioContextRef.current?.close().catch(console.error);
         inputAudioContextRef.current = null;
+        mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
     
         outputAudioSources.current.forEach(source => source.stop());
         outputAudioSources.current.clear();
@@ -110,9 +105,8 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
         outputAudioContextRef.current = null;
         nextAudioStartTime.current = 0;
     
-        // 4. Update the component state.
         setConversationState('idle');
-    }, []);
+    }, [conversationState]);
 
     // --- Turkish Mode Logic ---
     useEffect(() => {
