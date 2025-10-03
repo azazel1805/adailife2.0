@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { Chat, LiveServerMessage } from '@google/genai';
-import { GoogleGenAI, Modality } from '@google/genai';
-import { createTutorChatSession } from '../services/geminiService';
+import type { Chat } from '@google/genai';
+import { createTutorChatSession, createCreativeWritingSession } from '../services/geminiService';
 import { ChatMessage } from '../types';
 import ErrorMessage from '../components/ErrorMessage';
 import { SendIcon } from '../components/icons/Icons';
@@ -11,35 +10,6 @@ interface AITutorProps {
     initialMessage?: string | null;
     onMessageSent?: () => void;
 }
-
-// FIX: Define a local type for the Gemini Blob structure as it's not exported from the library.
-type GeminiBlob = {
-  data: string;
-  mimeType: string;
-};
-
-
-// --- AudioWorklet Setup ---
-// This code runs in a separate, high-priority thread to process audio.
-const workletCode = `
-class AudioProcessor extends AudioWorkletProcessor {
-  process(inputs) {
-    const input = inputs[0];
-    if (input.length > 0) {
-      const channel = input[0];
-      if (channel) {
-        // Send the Float32Array data back to the main thread.
-        this.port.postMessage(channel);
-      }
-    }
-    return true; // Keep the processor alive.
-  }
-}
-registerProcessor('audio-processor', AudioProcessor);
-`;
-const workletBlob = new Blob([workletCode], { type: 'application/javascript' });
-const workletURL = URL.createObjectURL(workletBlob);
-
 
 const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
     // --- Shared State ---
@@ -56,89 +26,169 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const { trackAction } = useChallenge();
     
-    // --- English Voice Chat State & Refs ---
-    const [conversationState, setConversationState] = useState<'idle' | 'active'>('idle');
-    const [liveHistory, setLiveHistory] = useState<{ speaker: 'user' | 'ai'; text: string }[]>([]);
-    const sessionPromiseRef = useRef<Promise<any> | null>(null);
-    const inputAudioContextRef = useRef<AudioContext | null>(null);
-    const outputAudioContextRef = useRef<AudioContext | null>(null);
-    const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
-    const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-    const mediaStreamRef = useRef<MediaStream | null>(null);
-    const outputAudioSources = useRef<Set<AudioBufferSourceNode>>(new Set());
-    const nextAudioStartTime = useRef<number>(0);
+    // --- English Voice Chat State ---
+    const [isListening, setIsListening] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [englishConversation, setEnglishConversation] = useState<ChatMessage[]>([]);
+    const [interimTranscript, setInterimTranscript] = useState('');
+    const englishChatSessionRef = useRef<Chat | null>(null);
+    const recognitionRef = useRef<any | null>(null); // SpeechRecognition object
 
-    // --- Audio Helper Functions ---
-    const encode = (bytes: Uint8Array) => {
-        let binary = '';
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
+
+    // --- English Mode: Web Speech API Setup ---
+    useEffect(() => {
+        if (!isEnglishMode) return;
+
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            setError("Sorry, your browser doesn't support speech recognition. Please try Google Chrome or Edge.");
+            return;
         }
-        return btoa(binary);
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = true;
+        recognition.continuous = false; // We want to process speech after the user pauses
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onerror = (event: any) => {
+            console.error("Speech recognition error:", event.error);
+            setError(`Speech recognition error: ${event.error}. Please check microphone permissions.`);
+            setIsListening(false);
+        };
+
+        recognition.onresult = (event: any) => {
+            let interim = '';
+            let final = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    final += event.results[i][0].transcript;
+                } else {
+                    interim += event.results[i][0].transcript;
+                }
+            }
+            setInterimTranscript(interim);
+            if (final.trim()) {
+                handleUserSpeech(final.trim());
+            }
+        };
+
+        recognitionRef.current = recognition;
+
+        // Cleanup synthesis on unmount or mode change
+        return () => {
+            window.speechSynthesis.cancel();
+            recognition.stop();
+        }
+    }, [isEnglishMode]); // Re-setup if mode changes
+
+    // --- English Mode: Helper Functions ---
+
+    const speakText = (text: string): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            if (typeof window.speechSynthesis === 'undefined') {
+                setIsSpeaking(false);
+                return reject(new Error("Speech synthesis not supported."));
+            }
+            window.speechSynthesis.cancel(); // Stop any previous speech
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            const voices = window.speechSynthesis.getVoices();
+            const femaleVoice = voices.find(voice => voice.lang === 'en-US' && /female/i.test(voice.name));
+            utterance.voice = femaleVoice || voices.find(voice => voice.lang === 'en-US') || null;
+
+            utterance.onstart = () => setIsSpeaking(true);
+            utterance.onend = () => {
+                setIsSpeaking(false);
+                resolve();
+            };
+            utterance.onerror = (e) => {
+                console.error("Speech synthesis error", e);
+                setError("Could not play audio response.");
+                setIsSpeaking(false);
+                reject(e);
+            };
+
+            window.speechSynthesis.speak(utterance);
+        });
     };
 
-    const createBlob = (data: Float32Array): GeminiBlob => {
-        const l = data.length;
-        const int16 = new Int16Array(l);
-        for (let i = 0; i < l; i++) {
-            const s = Math.max(-1, Math.min(1, data[i]));
-            int16[i] = s < 0 ? s * 32768 : s * 32767;
+    const handleUserSpeech = async (transcript: string) => {
+        if (!englishChatSessionRef.current) return;
+        
+        setIsLoading(true);
+        setInterimTranscript('');
+        setEnglishConversation(prev => [...prev, { role: 'user', text: transcript }]);
+        
+        try {
+            const response = await englishChatSessionRef.current.sendMessage({ message: transcript });
+            const aiText = response.text;
+            
+            setEnglishConversation(prev => [...prev, { role: 'model', text: aiText }]);
+            await speakText(aiText);
+        } catch (e: any) {
+            setError(e.message || "Failed to get AI response.");
+        } finally {
+            setIsLoading(false);
         }
-        return { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' };
     };
 
-    const decode = (base64: string) => {
-        const binaryString = atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes;
-    };
-
-    const decodeAudioData = async (data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> => {
-        const dataInt16 = new Int16Array(data.buffer);
-        const frameCount = dataInt16.length / numChannels;
-        const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-        for (let channel = 0; channel < numChannels; channel++) {
-            const channelData = buffer.getChannelData(channel);
-            for (let i = 0; i < frameCount; i++) {
-                channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    const handleMicClick = () => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+        } else if (!isSpeaking && !isLoading) {
+            try {
+                 recognitionRef.current?.start();
+            } catch (e) {
+                console.error("Could not start recognition:", e);
+                setError("Could not start listening. Please try again.");
             }
         }
-        return buffer;
     };
     
-    // --- Live Session Cleanup ---
-    const stopConversation = useCallback(() => {
-        if (conversationState !== 'active') return;
+    // --- Session & Mode Management ---
 
-        // 1. Shut down the audio pipeline first to stop sending data.
-        audioWorkletNodeRef.current?.disconnect();
-        mediaStreamSourceRef.current?.disconnect();
-        audioWorkletNodeRef.current = null;
-        mediaStreamSourceRef.current = null;
+    const stopEnglishSession = useCallback(() => {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+        setIsListening(false);
+        englishChatSessionRef.current = null;
+    }, []);
     
-        inputAudioContextRef.current?.close().catch(console.error);
-        inputAudioContextRef.current = null;
-        mediaStreamRef.current?.getTracks().forEach(track => track.stop());
-        mediaStreamRef.current = null;
-    
-        outputAudioSources.current.forEach(source => source.stop());
-        outputAudioSources.current.clear();
-        outputAudioContextRef.current?.close().catch(console.error);
-        outputAudioContextRef.current = null;
-        nextAudioStartTime.current = 0;
+    const handleModeChange = (englishMode: boolean) => {
+        // If switching away from english mode, stop everything
+        if (isEnglishMode) {
+            stopEnglishSession();
+        }
         
-        // 2. Now, close the WebSocket session.
-        sessionPromiseRef.current?.then(session => session.close());
-        sessionPromiseRef.current = null;
+        setIsEnglishMode(englishMode);
+        setError('');
+        
+        if (englishMode) {
+            // Setup for English Mode
+            const session = createCreativeWritingSession('conversation', 'start'); // Re-using this service function as it has a suitable system prompt
+            englishChatSessionRef.current = session;
+            const welcomeMessage: ChatMessage = { role: 'model', text: "Hello! I'm Alex, your English speaking partner. Let's have a chat! How are you today?"};
+            setEnglishConversation([welcomeMessage]);
+            speakText(welcomeMessage.text);
+        } else {
+            // Reset to Turkish Mode
+             setHistory([
+                { role: 'model', text: 'Merhaba! Ben Onur, senin kişisel AI İngilizce eğitmenin. İngilizce yolculuğunda sana nasıl yardımcı olabilirim?' }
+            ]);
+        }
+    };
     
-        // 3. Finally, update the UI state.
-        setConversationState('idle');
-    }, [conversationState]);
+    // Cleanup on component unmount
+    useEffect(() => {
+        return () => {
+            stopEnglishSession();
+        }
+    }, [stopEnglishSession]);
 
     // --- Turkish Mode Logic ---
     useEffect(() => {
@@ -156,7 +206,7 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
-    }, [history, liveHistory]);
+    }, [history, englishConversation]);
     
     useEffect(() => {
         if (initialMessage && chatSession && !isEnglishMode) {
@@ -228,140 +278,7 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
         }
     };
     
-    // --- English Mode Logic ---
-     const startConversation = async () => {
-        if (!isEnglishMode) return;
-        setConversationState('active');
-        setError('');
-        setLiveHistory([]);
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaStreamRef.current = stream;
-
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            
-            sessionPromiseRef.current = ai.live.connect({
-                model: 'gemini-2.5-flash-native-audio-preview-09-2025',
-                callbacks: {
-                    onopen: async () => {
-                        const context = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-                        inputAudioContextRef.current = context;
-                        
-                        try {
-                            await context.audioWorklet.addModule(workletURL);
-
-                            const source = context.createMediaStreamSource(stream);
-                            mediaStreamSourceRef.current = source;
-                            
-                            const processor = new AudioWorkletNode(context, 'audio-processor');
-                            audioWorkletNodeRef.current = processor;
-    
-                            processor.port.onmessage = (event) => {
-                                const inputData = event.data;
-                                const pcmBlob = createBlob(inputData);
-                                sessionPromiseRef.current?.then(session => session.sendRealtimeInput({ media: pcmBlob }));
-                            };
-                            source.connect(processor);
-                            processor.connect(context.destination);
-                        } catch (e) {
-                             console.error("Error setting up audio worklet:", e);
-                             setError('Audio processing setup failed.');
-                             stopConversation();
-                        }
-                    },
-                    onmessage: async (message: LiveServerMessage) => {
-                        let currentInputTranscription = '';
-                        let currentOutputTranscription = '';
-
-                         if (message.serverContent?.inputTranscription) {
-                            currentInputTranscription += message.serverContent.inputTranscription.text;
-                         }
-                         if (message.serverContent?.outputTranscription) {
-                            currentOutputTranscription += message.serverContent.outputTranscription.text;
-                         }
-                        
-                        if (currentInputTranscription) {
-                           setLiveHistory(prev => {
-                                const last = prev[prev.length - 1];
-                                if (last?.speaker === 'user') {
-                                    return [...prev.slice(0, -1), { ...last, text: last.text + currentInputTranscription }];
-                                }
-                                return [...prev, { speaker: 'user', text: currentInputTranscription }];
-                            });
-                        }
-                        if (currentOutputTranscription) {
-                            setLiveHistory(prev => {
-                                const last = prev[prev.length - 1];
-                                if (last?.speaker === 'ai') {
-                                    return [...prev.slice(0, -1), { ...last, text: last.text + currentOutputTranscription }];
-                                }
-                                return [...prev, { speaker: 'ai', text: currentOutputTranscription }];
-                            });
-                        }
-
-                        const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-                        if (audioData) {
-                            if (!outputAudioContextRef.current || outputAudioContextRef.current.state === 'closed') {
-                                outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-                            }
-                            const ctx = outputAudioContextRef.current;
-                            nextAudioStartTime.current = Math.max(nextAudioStartTime.current, ctx.currentTime);
-                            const audioBuffer = await decodeAudioData(decode(audioData), ctx, 24000, 1);
-                            const source = ctx.createBufferSource();
-                            source.buffer = audioBuffer;
-                            source.connect(ctx.destination);
-                            source.addEventListener('ended', () => outputAudioSources.current.delete(source));
-                            source.start(nextAudioStartTime.current);
-                            nextAudioStartTime.current += audioBuffer.duration;
-                            outputAudioSources.current.add(source);
-                        }
-                    },
-                    onerror: (e: ErrorEvent) => {
-                        console.error('Live session error:', e);
-                        setError('Konuşma oturumunda bir hata oluştu.');
-                        stopConversation();
-                    },
-                    onclose: (e: CloseEvent) => {
-                        console.debug('Live session closed.');
-                        stopConversation();
-                    },
-                },
-                config: {
-                    responseModalities: [Modality.AUDIO],
-                    inputAudioTranscription: {},
-                    outputAudioTranscription: {},
-                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' }}},
-                    systemInstruction: "You are 'Alex', a friendly and patient English conversation partner. Your goal is to have a natural, spoken conversation with the user in English. Keep your responses conversational and not overly long. Encourage the user to speak and express themselves. Do not act as a teacher or correct grammar unless explicitly asked. Your responses will be converted to audio, so write in a way that sounds natural when spoken.",
-                },
-            });
-        } catch (err) {
-            setError('Mikrofon erişimi reddedildi veya bulunamadı. Lütfen tarayıcı ayarlarınızı kontrol edin.');
-            setConversationState('idle');
-        }
-    };
-
-    const handleModeChange = (englishMode: boolean) => {
-        if (isEnglishMode && conversationState === 'active') {
-            stopConversation();
-        }
-        setIsEnglishMode(englishMode);
-        setError('');
-        if (englishMode) {
-            setLiveHistory([]);
-        } else {
-             setHistory([
-                { role: 'model', text: 'Merhaba! Ben Onur, senin kişisel AI İngilizce eğitmenin. İngilizce yolculuğunda sana nasıl yardımcı olabilirim?' }
-            ]);
-        }
-    };
-    
-    // Cleanup on component unmount
-    useEffect(() => {
-        return () => {
-            stopConversation();
-        }
-    }, [stopConversation]);
+    // --- UI Rendering ---
 
     const ModeSwitcher = () => (
         <div className="flex items-center gap-2 bg-slate-200 dark:bg-slate-800 p-1 rounded-lg mb-4">
@@ -424,35 +341,45 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
 
     const renderEnglishMode = () => (
         <div className="h-[calc(100vh-14rem)] flex flex-col bg-white dark:bg-slate-900 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800">
-            <div className="p-6 border-b-2 border-slate-200 dark:border-slate-800">
+            <div className="p-6 border-b-2 border-slate-200 dark:border-slate-800 flex-shrink-0">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Speaking Partner: Alex</h2>
                 <p className="text-slate-500 dark:text-slate-400">Start a conversation and practice your English speaking skills.</p>
             </div>
             <div ref={chatContainerRef} className="flex-grow p-6 overflow-y-auto space-y-4">
-                {liveHistory.length === 0 && conversationState === 'idle' && (
-                     <div className="text-center text-slate-500 dark:text-slate-400">Press "Start Conversation" to begin.</div>
-                )}
-                {liveHistory.map((msg, index) => (
-                    <div key={index} className={`flex items-end gap-3 ${msg.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        {msg.speaker === 'ai' && <span className="text-3xl mb-1">🤖</span>}
-                        <div className={`max-w-xl p-3 rounded-2xl ${msg.speaker === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
+                {englishConversation.map((msg, index) => (
+                    <div key={index} className={`flex items-end gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {msg.role === 'model' && <span className="text-3xl mb-1">🤖</span>}
+                        <div className={`max-w-xl p-3 rounded-2xl ${msg.role === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
                             <p className="whitespace-pre-wrap text-sm">{msg.text}</p>
                         </div>
-                        {msg.speaker === 'user' && <span className="text-3xl mb-1">🎤</span>}
+                        {msg.role === 'user' && <span className="text-3xl mb-1">🎤</span>}
                     </div>
                 ))}
-            </div>
-            <div className="p-4 bg-white dark:bg-slate-900 rounded-b-xl text-center border-t-2 border-slate-200 dark:border-slate-800">
-                 <ErrorMessage message={error} />
-                 {conversationState === 'active' ? (
-                     <button onClick={stopConversation} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full transition duration-300 text-lg flex items-center gap-2 mx-auto shadow-md hover:shadow-lg hover:-translate-y-0.5">
-                        <div className="w-3 h-3 bg-white rounded-sm animate-pulse"></div> Stop Conversation
-                     </button>
-                 ) : (
-                     <button onClick={startConversation} className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-full transition duration-300 text-lg flex items-center gap-2 mx-auto shadow-md hover:shadow-lg hover:-translate-y-0.5">
-                        🎤 Start Conversation
-                     </button>
+                {interimTranscript && (
+                    <div className="flex items-end gap-2 justify-end">
+                        <div className="max-w-md p-3 rounded-2xl bg-blue-500 text-white rounded-br-none opacity-60">
+                            <p className="text-sm italic">{interimTranscript}</p>
+                        </div>
+                        <span className="text-2xl">🎤</span>
+                    </div>
                  )}
+            </div>
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-b-xl text-center border-t-2 border-slate-200 dark:border-slate-800 flex-shrink-0">
+                 <ErrorMessage message={error} />
+                 <div className="flex items-center justify-center gap-6">
+                    <button onClick={handleMicClick} disabled={isSpeaking || isLoading} 
+                        className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 text-white text-3xl shadow-lg
+                            ${(isSpeaking || isLoading) ? 'bg-slate-400 cursor-not-allowed' : 
+                            isListening ? 'bg-red-500 animate-pulse' : 
+                            'bg-adai-primary hover:bg-adai-secondary'}`
+                        }
+                    >
+                        🎤
+                    </button>
+                    <div className="w-48 text-left text-sm text-slate-500 dark:text-slate-400">
+                        {isLoading ? "Alex thinks..." : isSpeaking ? "Alex is speaking..." : isListening ? "Listening..." : "Press the mic to talk"}
+                    </div>
+                 </div>
             </div>
         </div>
     );
