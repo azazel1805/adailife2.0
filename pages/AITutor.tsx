@@ -1,22 +1,23 @@
-
-
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Chat, LiveServerMessage } from '@google/genai';
-import { GoogleGenAI, Modality, Blob } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 import { createTutorChatSession } from '../services/geminiService';
 import { ChatMessage } from '../types';
 import ErrorMessage from '../components/ErrorMessage';
 import { SendIcon } from '../components/icons/Icons';
 import { useChallenge } from '../context/ChallengeContext';
-type GeminiBlob = {
-  data: string;
-  mimeType: string;
-};
+
 interface AITutorProps {
     initialMessage?: string | null;
     onMessageSent?: () => void;
 }
+
+// FIX: Define a local type for the Gemini Blob structure as it's not exported from the library.
+type GeminiBlob = {
+  data: string;
+  mimeType: string;
+};
+
 
 // --- AudioWorklet Setup ---
 // This code runs in a separate, high-priority thread to process audio.
@@ -77,7 +78,7 @@ const AITutor: React.FC<AITutorProps> = ({ initialMessage, onMessageSent }) => {
         return btoa(binary);
     };
 
-    const createBlob = (data: Float32Array): Blob => {
+    const createBlob = (data: Float32Array): GeminiBlob => {
         const l = data.length;
         const int16 = new Int16Array(l);
         for (let i = 0; i < l; i++) {
