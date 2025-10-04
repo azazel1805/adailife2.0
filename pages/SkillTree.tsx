@@ -3,13 +3,37 @@ import { useExamHistory } from '../context/ExamHistoryContext';
 import { PerformanceStats } from '../types';
 
 const SKILL_CATEGORIES = {
-    'Okuduğunu Anlama': ['Paragraf Sorusu', 'Akışı Bozan Cümle Sorusu', 'Paragraf Tamamlama Sorusu', 'Okuma Anlama Analizi'],
-    'Gramer ve Kelime': ['Kelime Sorusu', 'Dil Bilgisi Sorusu', 'Cloze Test Sorusu'],
-    'Cümle Yapısı': ['Cümle Tamamlama Sorusu', 'Restatement (Yeniden Yazma) Sorusu'],
-    'Çeviri Becerileri': ['Çeviri Sorusu'],
-    'Dinlediğini Anlama': ['Dinleme Pratiği'],
-    'Diyalog': ['Diyalog Tamamlama Sorusu'],
+    'Okuma Becerileri': [
+        'Okuma Anlama Analizi', // from ReadingPractice
+        'Paragraf Sorusu', // from PDF
+        'Paragraf Tamamlama Sorusu', // from PDF
+        'Akışı Bozan Cümle Sorusu', // from PDF
+        'Restatement (Yeniden Yazma) Sorusu' // from PDF
+    ],
+    'Dilbilgisi & Cümle Yapısı': [
+        'Gramer Kütüphanesi', // from GrammarLibrary
+        'Cümle Sıralama', // from SentenceOrdering
+        'Dil Bilgisi Sorusu', // from PDF
+        'Cümle Tamamlama Sorusu', // from PDF
+        'Cloze Test Sorusu' // from PDF
+    ],
+    'Kelime Bilgisi & Oyunlar': [
+        'Word Sprint', // from WordSprint
+        'Adam Asmaca', // from Hangman
+        'Kelime Sorusu' // from PDF
+    ],
+    'Konuşma & Diyalog': [
+        'Diyalog Kurucu', // from DialogueCompletion
+        'Diyalog Tamamlama Sorusu' // from PDF
+    ],
+    'Dinleme Becerileri': [
+        'Dinleme Pratiği' // from ListeningPractice
+    ],
+    'Çeviri Becerileri': [
+        'Çeviri Sorusu' // from PDF
+    ]
 };
+
 
 const SkillTree: React.FC = () => {
     const { performanceStats } = useExamHistory();
@@ -90,9 +114,9 @@ const SkillTree: React.FC = () => {
 
     if (Object.keys(performanceStats).length === 0) {
         return (
-            <div className="text-center py-10 bg-white dark:bg-slate-900 rounded-lg shadow-lg">
+            <div className="text-center py-10 bg-bg-secondary rounded-lg shadow-lg">
                 <h2 className="text-2xl font-bold mb-2">Yetenek Ağacınız Henüz Boş</h2>
-                <p className="text-slate-500 dark:text-slate-400">Performansınızı analiz etmek ve yetenek ağacınızı oluşturmak için lütfen pratik araçlarını kullanın.</p>
+                <p className="text-text-secondary">Performansınızı analiz etmek ve yetenek ağacınızı oluşturmak için lütfen pratik araçlarını kullanın.</p>
             </div>
         );
     }
@@ -100,8 +124,8 @@ const SkillTree: React.FC = () => {
     return (
         <div className="max-w-6xl mx-auto space-y-6">
             <div>
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-200">Yetenek Ağacı</h2>
-                <p className="text-slate-500 dark:text-slate-400 mt-1">Genel İngilizce becerilerinize ve uygulama performansınıza genel bir bakış.</p>
+                <h2 className="text-3xl font-bold text-text-primary">Yetenek Ağacı</h2>
+                <p className="text-text-secondary mt-1">Genel İngilizce becerilerinize ve uygulama performansınıza genel bir bakış.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -138,13 +162,13 @@ const SkillTree: React.FC = () => {
                     onClick={() => setSelectedSkill(null)}
                 >
                     <div 
-                        className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md" 
+                        className="bg-bg-secondary rounded-lg shadow-xl w-full max-w-md" 
                         onClick={e => e.stopPropagation()}
                     >
                         <div className={`p-4 rounded-t-lg border-b-4 ${selectedSkillStyle.bgColor} ${selectedSkillStyle.borderColor}`}>
                             <div className="flex justify-between items-center">
                                 <h3 className={`text-xl font-bold ${selectedSkillStyle.textColor}`}>{selectedSkill}</h3>
-                                <button onClick={() => setSelectedSkill(null)} className="text-slate-500 dark:text-slate-400 text-2xl hover:text-slate-900 dark:text-slate-200">&times;</button>
+                                <button onClick={() => setSelectedSkill(null)} className="text-text-secondary text-2xl hover:text-text-primary">&times;</button>
                             </div>
                         </div>
                         <div className="p-6 space-y-4">
@@ -153,24 +177,24 @@ const SkillTree: React.FC = () => {
                                     Seviye: {selectedSkillStyle.level}
                                 </span>
                             </div>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 text-center bg-gray-50 dark:bg-slate-700 p-3 rounded-md">
+                            <p className="text-sm text-text-secondary text-center bg-gray-50 dark:bg-slate-700 p-3 rounded-md">
                                 {selectedSkillStyle.description}
                             </p>
                             <div className="grid grid-cols-2 gap-4 text-center">
                                 <div>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Toplam Çözülen</p>
+                                    <p className="text-sm text-text-secondary">Toplam Çözülen</p>
                                     <p className="text-2xl font-bold">{selectedSkillData.total}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Doğru Sayısı</p>
+                                    <p className="text-sm text-text-secondary">Doğru Sayısı</p>
                                     <p className="text-2xl font-bold text-green-600">{selectedSkillData.correct}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Yanlış Sayısı</p>
+                                    <p className="text-sm text-text-secondary">Yanlış Sayısı</p>
                                     <p className="text-2xl font-bold text-red-600">{selectedSkillData.total - selectedSkillData.correct}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Başarı Oranı</p>
+                                    <p className="text-sm text-text-secondary">Başarı Oranı</p>
                                     <p className={`text-2xl font-bold ${selectedSkillStyle.textColor}`}>
                                         {selectedSkillStyle.percentage.toFixed(1)}%
                                     </p>
