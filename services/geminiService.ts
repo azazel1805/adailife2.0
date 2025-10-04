@@ -858,6 +858,78 @@ const GRAMMAR_SENTENCE_FEEDBACK_SCHEMA = {
     required: ["isCorrect", "feedback"]
 };
 
+const PLACEMENT_TEST_QUESTION_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        question: { type: Type.STRING },
+        options: { type: Type.ARRAY, items: { type: Type.STRING } },
+        correctAnswer: { type: Type.STRING }
+    },
+    required: ["question", "options", "correctAnswer"]
+};
+
+const PLACEMENT_TEST_CONTENT_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        grammar: {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                questions: { type: Type.ARRAY, items: PLACEMENT_TEST_QUESTION_SCHEMA }
+            },
+            required: ["title", "questions"]
+        },
+        listening: {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                script: { type: Type.STRING },
+                questions: { type: Type.ARRAY, items: PLACEMENT_TEST_QUESTION_SCHEMA }
+            },
+            required: ["title", "script", "questions"]
+        },
+        reading: {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                passage: { type: Type.STRING },
+                questions: { type: Type.ARRAY, items: PLACEMENT_TEST_QUESTION_SCHEMA }
+            },
+            required: ["title", "passage", "questions"]
+        },
+        writing: {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                writingPrompt: { type: Type.STRING }
+            },
+            required: ["title", "writingPrompt"]
+        }
+    },
+    required: ["grammar", "listening", "reading", "writing"]
+};
+
+const PLACEMENT_TEST_REPORT_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        overallCefrLevel: { type: Type.STRING, description: "The user's overall CEFR level (e.g., A2, B1, B2)." },
+        detailedFeedback: { type: Type.STRING, description: "Overall feedback in Turkish on the user's performance and next steps." },
+        skillReports: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    skill: { type: Type.STRING, description: "The skill being assessed ('Grammar', 'Listening', 'Reading', 'Writing')." },
+                    cefrLevel: { type: Type.STRING, description: "The CEFR level for this specific skill." },
+                    feedback: { type: Type.STRING, description: "Specific feedback in Turkish for this skill." }
+                },
+                required: ["skill", "cefrLevel", "feedback"]
+            }
+        }
+    },
+    required: ["overallCefrLevel", "detailedFeedback", "skillReports"]
+};
+
 
 // --- Helper function for streaming responses ---
 async function* streamToAsyncIterator(stream: AsyncGenerator<GenerateContentResponse, any, unknown>): AsyncGenerator<string, void, unknown> {
@@ -1562,5 +1634,57 @@ export const checkUserGrammarSentence = async (sentence: string, rule: string): 
     } catch (error) {
         console.error("Error checking user grammar sentence:", error);
         throw new Error("Cümle kontrolü sırasında bir hata oluştu.");
+    }
+};
+
+export const generatePlacementTest = async (): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-lite',
+            contents: `Generate a comprehensive CEFR placement test in English. The test must cover Grammar, Listening, Reading, and Writing skills, progressing in difficulty from A2 to C1 level. The output must be a JSON object following the schema.
+- Grammar: 5 multiple-choice questions.
+- Listening: A short script (4-6 sentences) and 3 multiple-choice questions.
+- Reading: A short passage (around 100-150 words) and 3 multiple-choice questions.
+- Writing: One open-ended prompt.
+All parts of the test content must be in English.`,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: PLACEMENT_TEST_CONTENT_SCHEMA
+            }
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating placement test:", error);
+        throw new Error("Seviye tespit sınavı oluşturulurken bir hata oluştu.");
+    }
+};
+
+export const evaluatePlacementTest = async (testContent: PlacementTestContent, userAnswers: any): Promise<string> => {
+    const prompt = `Evaluate the user's answers for the following CEFR placement test and provide a detailed report in JSON format according to the schema.
+- Analyze the user's performance in each section (Grammar, Listening, Reading, Writing).
+- For the writing section, evaluate grammar, vocabulary, coherence, and task achievement.
+- Assign a CEFR level (A1, A2, B1, B2, C1, C2) for each of the four skills.
+- Assign an overall CEFR level based on the combined performance.
+- Provide all feedback in Turkish.
+
+--- TEST CONTENT ---
+${JSON.stringify(testContent, null, 2)}
+
+--- USER ANSWERS ---
+${JSON.stringify(userAnswers, null, 2)}
+`;
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-lite',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: PLACEMENT_TEST_REPORT_SCHEMA
+            }
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error evaluating placement test:", error);
+        throw new Error("Sınav değerlendirilirken bir hata oluştu.");
     }
 };
