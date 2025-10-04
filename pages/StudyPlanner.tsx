@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { generateStudyPlan } from '../services/geminiService';
-import { FullStudyPlan, Tab, StudyTask } from '../types';
+import { FullStudyPlan, Tab, StudyTask, PlacementTestReport } from '../types';
 import { useExamHistory } from '../context/ExamHistoryContext';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
@@ -18,6 +18,9 @@ const StudyPlanner: React.FC<StudyPlannerProps> = ({ onNavigate }) => {
     const planKey = user ? `study-plan-${user}` : 'study-plan-guest';
     const [savedPlan, setSavedPlan] = useLocalStorage<FullStudyPlan | null>(planKey, null);
 
+    const reportKey = user ? `placement-test-report-${user}` : 'placement-test-report-guest';
+    const [cefrReport] = useLocalStorage<PlacementTestReport | null>(reportKey, null);
+
     const [targetDate, setTargetDate] = useState('');
     const [studyHours, setStudyHours] = useState(5);
     const [isLoading, setIsLoading] = useState(false);
@@ -30,8 +33,8 @@ const StudyPlanner: React.FC<StudyPlannerProps> = ({ onNavigate }) => {
             setError('Lütfen geçerli bir hedef tarih ve haftalık çalışma süresi girin.');
             return;
         }
-        if (Object.keys(performanceStats).length === 0) {
-            setError('Kişiselleştirilmiş bir plan oluşturmak için önce pratik araçlarını kullanarak veri oluşturmalısınız.');
+        if (Object.keys(performanceStats).length === 0 && !cefrReport) {
+            setError('Kişiselleştirilmiş bir plan oluşturmak için önce Seviye Tespit Sınavı\'nı çözmeli veya pratik araçlarını kullanarak veri oluşturmalısınız.');
             return;
         }
 
@@ -39,7 +42,7 @@ const StudyPlanner: React.FC<StudyPlannerProps> = ({ onNavigate }) => {
         setError('');
 
         try {
-            const resultText = await generateStudyPlan(performanceStats, targetDate, studyHours);
+            const resultText = await generateStudyPlan(performanceStats, targetDate, studyHours, cefrReport);
             const resultJson: FullStudyPlan = JSON.parse(resultText);
             setSavedPlan(resultJson);
         } catch (e: any) {
@@ -123,8 +126,15 @@ const StudyPlanner: React.FC<StudyPlannerProps> = ({ onNavigate }) => {
             <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800">
                 <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-50">Akıllı Çalışma Planlayıcısı</h2>
                 <p className="mb-6 text-slate-500 dark:text-slate-400">
-                    Hedeflerinizi ve uygulama içindeki performans verilerinizi analiz ederek size özel bir çalışma planı oluşturalım.
+                    Hedeflerinizi belirleyin. Yapay zeka, uygulama içindeki performansınızı ve seviye tespit sınavı sonuçlarınızı analiz ederek size özel bir çalışma planı oluştursun.
                 </p>
+
+                {cefrReport && (
+                    <div className="mb-4 bg-blue-100 dark:bg-blue-900/30 border-l-4 border-blue-500 text-blue-800 dark:text-blue-300 p-4 rounded-r-lg">
+                        <p className="font-bold">Seviye Tespit Sınavı sonucunuz ({cefrReport.overallCefrLevel}) plana dahil edilecektir.</p>
+                    </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="target-date" className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Hedef Tarih</label>
