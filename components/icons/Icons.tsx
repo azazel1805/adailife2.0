@@ -43,7 +43,6 @@ export const PrepositionIcon: React.FC = () => <span role="img" aria-label="Prep
 export const VisualDictionaryIcon: React.FC = () => <span role="img" aria-label="Visual Dictionary icon" className="text-xl">📸</span>;
 export const AffixIcon: React.FC = () => <span role="img" aria-label="Affix icon" className="text-xl">🧩</span>;
 export const TensesIcon: React.FC = () => <span role="img" aria-label="Tenses icon" className="text-xl">🕒</span>;
-export const VerbToBeIcon: React.FC = () => <span role="img" aria-label="Verb to be icon" className="text-xl">🧍</span>;
 export const CrosswordIcon: React.FC = () => <span role="img" aria-label="Crossword icon" className="text-xl">🔡</span>;
 export const GrammarGapsIcon: React.FC = () => <span role="img" aria-label="Grammar Gaps icon" className="text-xl">✏️</span>;
 export const HangmanIcon: React.FC = () => <span role="img" aria-label="Hangman icon" className="text-xl">🧍</span>;
