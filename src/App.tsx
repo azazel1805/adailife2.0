@@ -42,6 +42,8 @@ import GrammarGaps from '../pages/GrammarGaps';
 import Hangman from '../pages/Hangman';
 import WordSprint from '../pages/WordSprint';
 import ConceptWeaver from '../pages/ConceptWeaver';
+import PlacementTest from '../pages/PlacementTest';
+
 
 
 
@@ -50,7 +52,7 @@ import ConceptWeaver from '../pages/ConceptWeaver';
 
 // Components
 import WelcomeTour from '/components/WelcomeTour';
-import { AnalyzeIcon, GamesIcon, DictionaryIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon } from '/components/icons/Icons';
+import { AnalyzeIcon, GamesIcon, DictionaryIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, PlacementTestIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon } from '/components/icons/Icons';
 
 // Hooks & Types
 import useLocalStorage from '/hooks/useLocalStorage';
@@ -122,6 +124,7 @@ const App: React.FC = () => {
         'dashboard': { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
         'skill_tree': { id: 'skill_tree', label: 'Yetenek Ağacı', icon: <SkillTreeIcon /> },
         'planner': { id: 'planner', label: 'Akıllı Planlayıcı', icon: <PlannerIcon /> },
+        'placement_test': { id: 'placement_test', label: 'Seviye Tespit Sınavı', icon: <PlacementTestIcon /> },
         'tutor': { id: 'tutor', label: 'AI Eğitmen', icon: <TutorIcon /> },
         'history': { id: 'history', label: 'Geçmiş', icon: <HistoryIcon /> },
         'deconstruction': { id: 'deconstruction', label: 'Metin Analizi', icon: <DeconstructIcon /> },
@@ -156,7 +159,7 @@ const App: React.FC = () => {
     };
 
     const adaiMenuStructure = {
-    main: ['dashboard', 'skill_tree', 'planner', 'tutor'],
+    main: ['dashboard', 'skill_tree', 'planner', 'placement_test', 'tutor'],
     accordions: [
       { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator'] },
       { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint', 'concept_weaver'] },
@@ -263,6 +266,7 @@ const App: React.FC = () => {
             case 'dashboard': return <Dashboard onNavigate={handleTabClick} />;
             case 'skill_tree': return <SkillTree />;
             case 'planner': return <StudyPlanner onNavigate={handleTabClick} />;
+            case 'placement_test':  return <PlacementTest />;
             case 'pdf_importer': return <PDFImporter onAskTutor={handleAskTutor} onExamFinish={handleExamFinish} />;
             case 'analyzer': return <QuestionAnalyzer onAskTutor={handleAskTutor} />;
             case 'tutor': return <AITutor initialMessage={tutorInitialMessage} onMessageSent={() => setTutorInitialMessage(null)} />;
