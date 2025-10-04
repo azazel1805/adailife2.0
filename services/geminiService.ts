@@ -8,7 +8,8 @@ import {
     GroundingChunk, ParagraphCohesionAnalysis, SentenceDiagram, SentenceOrderingExercise, PerformanceReport, 
     PhrasalVerbDeconstructionResult, WeatherData, VisualDescriptionAnalysis, DictionaryEntry,
     Scenario, SimulatorChatMessage, PragmaticAnalysisResult, PerformanceStats, IdentifiedObject, AffixData, CrosswordData, ConceptWeaverAnalysis, GrammarTopicDetails,
-    GrammarSentenceFeedback
+    GrammarSentenceFeedback, PlacementTestContent,
+    PlacementTestReport
 } from '../types';
 import { parseGeneratedQuestions, parseClozeTestJsonResponse } from "../utils/questionParser";
 
