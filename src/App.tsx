@@ -158,7 +158,7 @@ const App: React.FC = () => {
     const adaiMenuStructure = {
     main: ['dashboard', 'skill_tree', 'planner', 'tutor'],
     accordions: [
-      { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['basics', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator', 'word_sprint'] },
+      { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['basics', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator'] },
       { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint', 'concept_weaver'] },
       { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
       { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
