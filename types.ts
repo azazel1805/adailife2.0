@@ -1,7 +1,7 @@
 
 
 
-export type Tab = 'dashboard' | 'planner' | 'analyzer' | 'tutor' | 'reading' | 'deconstruction' | 'diagrammer' | 'cohesion_analyzer' | 'writing' | 'listening' | 'news' | 'dictionary' | 'vocabulary' | 'history' | 'pdf_importer' | 'vocabulary_story_weaver' | 'skill_tree' | 'sentence_ordering' | 'speaking_simulator' | 'phrasal_verb_deconstructor' | 'admin' | 'translation_analyst' | 'dialogue_completion' | 'visual_reading' | 'creative_writing' | 'pragmatic_analyzer' | 'visual_dictionary' | 'grammar_library' | 'basics' | 'tenses' | 'crossword' | 'grammar_gaps' | 'hangman';
+export type Tab = 'dashboard' | 'planner' | 'analyzer' | 'tutor' | 'reading' | 'deconstruction' | 'diagrammer' | 'cohesion_analyzer' | 'writing' | 'listening' | 'news' | 'dictionary' | 'vocabulary' | 'history' | 'pdf_importer' | 'vocabulary_story_weaver' | 'skill_tree' | 'sentence_ordering' | 'speaking_simulator' | 'phrasal_verb_deconstructor' | 'admin' | 'translation_analyst' | 'dialogue_completion' | 'visual_reading' | 'creative_writing' | 'pragmatic_analyzer' | 'visual_dictionary' | 'grammar_library' | 'basics' | 'tenses' | 'crossword' | 'grammar_gaps' | 'hangman' | 'placement_test';
 
 export interface AnalysisResult {
   soruTipi?: string;
@@ -535,4 +535,38 @@ export interface GrammarTopicDetails {
 export interface GrammarSentenceFeedback {
   isCorrect: boolean;
   feedback: string;
+}
+
+// Types for Placement Test
+export interface PlacementTestQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+export interface TestSection {
+  title: string;
+  questions?: PlacementTestQuestion[];
+  passage?: string;
+  script?: string;
+  writingPrompt?: string;
+}
+
+export interface PlacementTestContent {
+  grammar: TestSection;
+  listening: TestSection;
+  reading: TestSection;
+  writing: TestSection;
+}
+
+export interface SkillReport {
+  skill: 'Grammar' | 'Listening' | 'Reading' | 'Writing';
+  cefrLevel: string; // e.g., "B1", "A2"
+  feedback: string;
+}
+
+export interface PlacementTestReport {
+  overallCefrLevel: string;
+  detailedFeedback: string;
+  skillReports: SkillReport[];
 }
