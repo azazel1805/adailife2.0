@@ -1297,11 +1297,20 @@ export const analyzeParagraphCohesion = async (paragraph: string): Promise<strin
     }
 };
 
-export const generateStudyPlan = async (performanceStats: PerformanceStats, targetDate: string, weeklyHours: number): Promise<string> => {
+export const generateStudyPlan = async (performanceStats: PerformanceStats, targetDate: string, weeklyHours: number, cefrReport: PlacementTestReport | null): Promise<string> => {
     try {
+        const cefrReportString = cefrReport
+            ? `\n\nAyrıca öğrencinin Seviye Tespit Sınavı sonuçları da şöyledir. Planı oluştururken bu sonuçları da DİKKATE AL:
+Genel CEFR Seviyesi: ${cefrReport.overallCefrLevel}
+Beceri Raporları:
+${cefrReport.skillReports.map(r => `- ${r.skill}: ${r.cefrLevel} (${r.feedback})`).join('\n')}`
+            : "";
+
+        const prompt = `Bir öğrencinin uygulama içi performansına, hedef tarihine ve haftalık çalışma süresine göre, ona özel, haftalara bölünmüş, etkileşimli bir çalışma planı oluştur. ${cefrReportString ? 'Plan, öğrencinin hem uygulama içi performansındaki hem de seviye tespit sınavındaki en zayıf olduğu becerilere odaklanmalı' : 'Plan, öğrencinin en zayıf olduğu becerilere odaklanmalı'} ve pratik yapmak için belirli ADAI uygulama araçlarına ('reading', 'listening', 'vocabulary', 'writing' vb.) yönlendirmelidir. Yanıtın JSON formatında ve belirtilen şemaya uygun olmalıdır. Tüm metin alanları (öneriler, görevler vb.) Türkçe olmalıdır.\n\nUygulama İçi Performans Özeti: ${JSON.stringify(performanceStats, null, 2)}${cefrReportString}\nHedef Tarih: ${targetDate}\nHaftalık Çalışma Saati: ${weeklyHours}`;
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Bir öğrencinin genel İngilizce beceri performansına, hedef tarihine ve haftalık çalışma süresine göre, ona özel, haftalara bölünmüş, etkileşimli bir çalışma planı oluştur. Plan, öğrencinin en zayıf olduğu becerilere odaklanmalı ve pratik yapmak için belirli ADAI uygulama araçlarına ('reading', 'listening', 'vocabulary', 'writing' vb.) yönlendirmelidir. Yanıtın JSON formatında ve belirtilen şemaya uygun olmalıdır. Tüm metin alanları (öneriler, görevler vb.) Türkçe olmalıdır.\n\nPerformans Özeti: ${JSON.stringify(performanceStats, null, 2)}\nHedef Tarih: ${targetDate}\nHaftalık Çalışma Saati: ${weeklyHours}`,
+            contents: prompt,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: STUDY_PLAN_SCHEMA,
