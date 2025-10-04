@@ -7,7 +7,8 @@ import {
     ReadingAnalysisResult, WritingAnalysis, ParagraphImprovementResult, ListeningTask, PassageDeconstructionResult, 
     GroundingChunk, ParagraphCohesionAnalysis, SentenceDiagram, SentenceOrderingExercise, PerformanceReport, 
     PhrasalVerbDeconstructionResult, WeatherData, VisualDescriptionAnalysis, DictionaryEntry,
-    Scenario, SimulatorChatMessage, PragmaticAnalysisResult, PerformanceStats, IdentifiedObject, AffixData, CrosswordData, ConceptWeaverAnalysis
+    Scenario, SimulatorChatMessage, PragmaticAnalysisResult, PerformanceStats, IdentifiedObject, AffixData, CrosswordData, ConceptWeaverAnalysis, GrammarTopicDetails,
+    GrammarSentenceFeedback
 } from '../types';
 import { parseGeneratedQuestions, parseClozeTestJsonResponse } from "../utils/questionParser";
 
@@ -814,6 +815,50 @@ const CONCEPT_WEAVER_ANALYSIS_SCHEMA = {
     required: ['overallFeedback', 'grammarFeedback', 'vocabularySuggestions', 'creativityScore', 'creativityFeedback']
 };
 
+const GRAMMAR_TOPIC_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        topicName: { type: Type.STRING },
+        simpleExplanation: { type: Type.STRING, description: "Konunun basit, anlaşılır ve analojilerle zenginleştirilmiş Türkçe açıklaması. Sanki 5 yaşındaki bir çocuğa anlatır gibi." },
+        interactiveExamples: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    sentence: { type: Type.STRING, description: "The full example sentence in English." },
+                    interactivePart: { type: Type.STRING, description: "The exact substring of the sentence that should be interactive." },
+                    explanation: { type: Type.STRING, description: "The Turkish explanation to show when the interactive part is clicked." }
+                },
+                required: ["sentence", "interactivePart", "explanation"]
+            }
+        },
+        miniTest: {
+            type: Type.ARRAY,
+            description: "2-3 soruluk kısa bir test.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    question: { type: Type.STRING, description: "The question text in English, possibly with a blank like '___'." },
+                    options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    correctAnswer: { type: Type.STRING, description: "The full text of the correct option." }
+                },
+                required: ["question", "options", "correctAnswer"]
+            }
+        }
+    },
+    required: ["topicName", "simpleExplanation", "interactiveExamples", "miniTest"]
+};
+
+const GRAMMAR_SENTENCE_FEEDBACK_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        isCorrect: { type: Type.BOOLEAN, description: "Whether the user's sentence correctly uses the grammar rule." },
+        feedback: { type: Type.STRING, description: "Friendly and helpful feedback in Turkish. If correct, praise the user. If incorrect, explain the mistake simply and provide the corrected sentence." }
+    },
+    required: ["isCorrect", "feedback"]
+};
+
+
 // --- Helper function for streaming responses ---
 async function* streamToAsyncIterator(stream: AsyncGenerator<GenerateContentResponse, any, unknown>): AsyncGenerator<string, void, unknown> {
     for await (const chunk of stream) {
@@ -1483,5 +1528,39 @@ Story:
     } catch (error) {
         console.error("Error analyzing concept weaver story:", error);
         throw new Error("Hikaye analizi sırasında bir hata oluştu.");
+    }
+};
+
+export const getGrammarTopicDetails = async (topic: string): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Generate a comprehensive and interactive grammar lesson for the topic: "${topic}". The entire response must be in JSON format according to the schema. All explanations must be in Turkish. The examples and questions should be in English.`,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: GRAMMAR_TOPIC_SCHEMA
+            }
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating grammar topic details:", error);
+        throw new Error("Gramer konusu detayı oluşturulurken bir hata oluştu.");
+    }
+};
+
+export const checkUserGrammarSentence = async (sentence: string, rule: string): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `A user is practicing the grammar rule "${rule}". Their sentence is: "${sentence}". Please check if the sentence is grammatically correct AND correctly applies the rule. Provide feedback in JSON format according to the schema. The feedback must be in Turkish.`,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: GRAMMAR_SENTENCE_FEEDBACK_SCHEMA
+            }
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error checking user grammar sentence:", error);
+        throw new Error("Cümle kontrolü sırasında bir hata oluştu.");
     }
 };
