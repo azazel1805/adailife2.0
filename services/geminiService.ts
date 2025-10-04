@@ -1227,7 +1227,7 @@ export const analyzeParagraphCohesion = async (paragraph: string): Promise<strin
 export const generateStudyPlan = async (performanceStats: PerformanceStats, targetDate: string, weeklyHours: number): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: 'gemini-2.5-flash',
             contents: `Bir öğrencinin genel İngilizce beceri performansına, hedef tarihine ve haftalık çalışma süresine göre, ona özel, haftalara bölünmüş, etkileşimli bir çalışma planı oluştur. Plan, öğrencinin en zayıf olduğu becerilere odaklanmalı ve pratik yapmak için belirli ADAI uygulama araçlarına ('reading', 'listening', 'vocabulary', 'writing' vb.) yönlendirmelidir. Yanıtın JSON formatında ve belirtilen şemaya uygun olmalıdır. Tüm metin alanları (öneriler, görevler vb.) Türkçe olmalıdır.\n\nPerformans Özeti: ${JSON.stringify(performanceStats, null, 2)}\nHedef Tarih: ${targetDate}\nHaftalık Çalışma Saati: ${weeklyHours}`,
             config: {
                 responseMimeType: "application/json",
