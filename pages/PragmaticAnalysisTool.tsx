@@ -12,7 +12,7 @@ const PragmaticAnalysisTool: React.FC = () => {
 
     const handleAnalyze = async () => {
         if (!text.trim()) {
-            setError('Please enter some text to analyze.');
+            setError('Analiz etmek için lütfen bir metin girin.');
             return;
         }
         setIsLoading(true);
@@ -39,14 +39,14 @@ const PragmaticAnalysisTool: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
-                <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Pragmatic Analysis Tool ⚖️</h2>
+                <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Pragmatik Analiz Aracı ⚖️</h2>
                 <p className="mb-4 text-slate-500 dark:text-slate-400">
-                    Analyze not just what a text says, but *how* it says it. Learn about the text's tone, intent, formality, and how it could be expressed in different contexts.
+                    Bir metnin sadece ne söylediğini değil, nasıl söylediğini de analiz edin. Metnin tonunu, amacını, resmiyet düzeyini ve farklı bağlamlarda nasıl ifade edilebileceğini öğrenin.
                 </p>
                 <textarea
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="Paste the English text to analyze here (e.g., 'Hey, I need that report ASAP.')..."
+                    placeholder="Analiz edilecek İngilizce metni buraya yapıştırın. (e.g., 'Hey, I need that report ASAP.')..."
                     className="w-full h-32 p-3 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-brand-primary focus:outline-none text-slate-900 dark:text-slate-200 resize-y"
                     disabled={isLoading}
                 />
@@ -55,7 +55,7 @@ const PragmaticAnalysisTool: React.FC = () => {
                     disabled={isLoading}
                     className="mt-4 w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold py-3 px-4 rounded-md transition duration-300 disabled:bg-gray-500 disabled:cursor-not-allowed flex items-center justify-center"
                 >
-                    {isLoading ? 'Analyzing...' : 'Analyze Text'}
+                    {isLoading ? 'Analiz yapılıyor...' : 'Metin analizi yap'}
                 </button>
             </div>
 
@@ -65,7 +65,7 @@ const PragmaticAnalysisTool: React.FC = () => {
             {result && (
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg space-y-6 animate-fade-in">
                     <div>
-                        <h3 className="text-xl font-bold text-brand-primary mb-3">Pragmatic Analysis</h3>
+                        <h3 className="text-xl font-bold text-brand-primary mb-3">Pragmatik Analiz</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <InfoCard label="Formality" value={result.formality} />
                             <InfoCard label="Tone" value={result.tone} />
@@ -75,7 +75,7 @@ const PragmaticAnalysisTool: React.FC = () => {
                     </div>
 
                     <div>
-                        <h3 className="text-xl font-bold text-brand-primary mb-3">Alternative Expressions</h3>
+                        <h3 className="text-xl font-bold text-brand-primary mb-3">Farklı İfadeler</h3>
                         <div className="space-y-4">
                             {result.alternatives.map((alt, index) => (
                                 <div key={index} className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg border-l-4 border-brand-secondary">
