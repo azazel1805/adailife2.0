@@ -4,6 +4,7 @@ import { GrammarTopicDetails, InteractiveExample, MiniTestQuestion, GrammarSente
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { GrammarLibraryIcon, TutorIcon } from '../components/icons/Icons';
+import { useExamHistory } from '../context/ExamHistoryContext';
 
 interface GrammarLibraryProps {
     onAskTutor: (context: string) => void;
@@ -47,6 +48,7 @@ const GrammarLibrary: React.FC<GrammarLibraryProps> = ({ onAskTutor }) => {
     // Mini Test State
     const [miniTestAnswers, setMiniTestAnswers] = useState<{ [key: number]: string }>({});
     const [showMiniTestResults, setShowMiniTestResults] = useState(false);
+    const { trackSingleQuestionResult } = useExamHistory();
 
     // Try it Yourself State
     const [userSentence, setUserSentence] = useState('');
@@ -79,6 +81,18 @@ const GrammarLibrary: React.FC<GrammarLibraryProps> = ({ onAskTutor }) => {
         }
     }, [selectedTopic]);
     
+    const handleCheckMiniTest = () => {
+        if (!topicDetails) return;
+
+        topicDetails.miniTest.forEach((q, i) => {
+            const userAnswer = miniTestAnswers[i];
+            const isCorrect = userAnswer === q.correctAnswer;
+            trackSingleQuestionResult('Gramer Kütüphanesi', isCorrect);
+        });
+
+        setShowMiniTestResults(true);
+    };
+
     const handleCheckSentence = async () => {
         if (!userSentence.trim() || !selectedTopic) return;
         setIsCheckingSentence(true);
@@ -150,7 +164,7 @@ const GrammarLibrary: React.FC<GrammarLibraryProps> = ({ onAskTutor }) => {
                                     );
                                 })}
                              </div>
-                             {!showMiniTestResults && <button onClick={() => setShowMiniTestResults(true)} className="mt-6 w-full bg-adai-secondary text-white font-bold py-2 rounded-lg">Cevapları Kontrol Et</button>}
+                             {!showMiniTestResults && <button onClick={handleCheckMiniTest} className="mt-6 w-full bg-adai-secondary text-white font-bold py-2 rounded-lg">Cevapları Kontrol Et</button>}
                         </div>
 
                         {/* 4. Try it Yourself */}
