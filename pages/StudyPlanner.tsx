@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo } from 'react';
 import { generateStudyPlan } from '../services/geminiService';
 import { FullStudyPlan, Tab, StudyTask } from '../types';
@@ -53,25 +55,25 @@ const StudyPlanner: React.FC<StudyPlannerProps> = ({ onNavigate }) => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
-                <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Akıllı Çalışma Planlayıcısı</h2>
-                <p className="mb-4 text-slate-500 dark:text-slate-400">
+            <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
+                <h2 className="text-2xl font-bold mb-2 text-text-primary">Akıllı Çalışma Planlayıcısı</h2>
+                <p className="mb-4 text-text-secondary">
                     Hedeflerinizi ve performans verilerinizi analiz ederek size özel bir çalışma planı oluşturalım.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label htmlFor="target-date" className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Hedef Tarih</label>
+                        <label htmlFor="target-date" className="block text-sm font-medium text-text-secondary mb-1">Hedef Tarih</label>
                         <input
                             type="date"
                             id="target-date"
                             value={targetDate}
                             min={today}
                             onChange={(e) => setTargetDate(e.target.value)}
-                            className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-adai-primary focus:outline-none text-slate-900 dark:text-slate-200"
+                            className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-adai-primary focus:outline-none text-text-primary"
                         />
                     </div>
                     <div>
-                        <label htmlFor="study-hours" className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Haftalık Çalışma Süresi (saat)</label>
+                        <label htmlFor="study-hours" className="block text-sm font-medium text-text-secondary mb-1">Haftalık Çalışma Süresi (saat)</label>
                         <input
                             type="number"
                             id="study-hours"
@@ -79,7 +81,7 @@ const StudyPlanner: React.FC<StudyPlannerProps> = ({ onNavigate }) => {
                             max="40"
                             value={studyHours}
                             onChange={(e) => setStudyHours(parseInt(e.target.value))}
-                            className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-adai-primary focus:outline-none text-slate-900 dark:text-slate-200"
+                            className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-adai-primary focus:outline-none text-text-primary"
                         />
                     </div>
                 </div>
@@ -97,22 +99,22 @@ const StudyPlanner: React.FC<StudyPlannerProps> = ({ onNavigate }) => {
             <ErrorMessage message={error} />
 
             {plan && (
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg space-y-6">
+                <div className="bg-bg-secondary p-6 rounded-lg shadow-lg space-y-6">
                     <div>
                         <h3 className="text-xl font-bold text-adai-primary">Kişisel Çalışma Planın</h3>
-                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 bg-gray-100 p-3 rounded-md">{plan.overallRecommendation}</p>
+                        <p className="mt-2 text-sm text-text-secondary bg-gray-100 p-3 rounded-md">{plan.overallRecommendation}</p>
                     </div>
 
                     <div className="space-y-8">
                         {plan.weeks.map(week => (
                             <div key={week.weekNumber} className="border-t border-gray-200 pt-4">
-                                <h4 className="text-lg font-bold text-slate-900 dark:text-slate-200">
+                                <h4 className="text-lg font-bold text-text-primary">
                                     {week.weekNumber}. Hafta: <span className="text-adai-primary">{week.weeklyFocus}</span>
                                 </h4>
                                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {week.dailyTasks && week.dailyTasks.map(day => (
                                         <div key={day.day} className="bg-gray-100 p-4 rounded-lg">
-                                            <h5 className="font-bold text-slate-500 dark:text-slate-400 border-b border-gray-200 pb-2 mb-2">{day.day}</h5>
+                                            <h5 className="font-bold text-text-secondary border-b border-gray-200 pb-2 mb-2">{day.day}</h5>
                                             <ul className="space-y-2">
                                                 {day.tasks && day.tasks.map((task, taskIndex) => (
                                                     <li key={taskIndex} className="text-sm">
