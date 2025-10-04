@@ -50,6 +50,8 @@ export const WordSprintIcon: React.FC = () => <span role="img" aria-label="Word 
 export const ConceptWeaverIcon: React.FC = () => <span role="img" aria-label="Concept Weaver icon" className="text-xl">🧵</span>;
 export const GamesIcon: React.FC = () => <span role="img" aria-label="Games icon" className="text-xl">🎮</span>;
 export const GrammarLibraryIcon: React.FC = () => <span role="img" aria-label="Grammar Library icon" className="text-xl">🏛️</span>;
+export const PlacementTestIcon: React.FC = () => <span role="img" aria-label="Placement test icon" className="text-xl">🧭</span>;
+
 // FIX: Add missing VerbToBeIcon to resolve import error in Basics.tsx.
 export const VerbToBeIcon: React.FC = () => <span role="img" aria-label="Verb to be icon" className="text-xl">🧱</span>;
 
