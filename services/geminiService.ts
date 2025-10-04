@@ -1534,7 +1534,7 @@ Story:
 export const getGrammarTopicDetails = async (topic: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash-lite',
             contents: `Generate a comprehensive and interactive grammar lesson for the topic: "${topic}". The entire response must be in JSON format according to the schema. All explanations must be in Turkish. The examples and questions should be in English.`,
             config: {
                 responseMimeType: 'application/json',
@@ -1551,7 +1551,7 @@ export const getGrammarTopicDetails = async (topic: string): Promise<string> => 
 export const checkUserGrammarSentence = async (sentence: string, rule: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash-lite',
             contents: `A user is practicing the grammar rule "${rule}". Their sentence is: "${sentence}". Please check if the sentence is grammatically correct AND correctly applies the rule. Provide feedback in JSON format according to the schema. The feedback must be in Turkish.`,
             config: {
                 responseMimeType: 'application/json',
