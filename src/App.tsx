@@ -35,7 +35,7 @@ import VisualReadingTool from '../pages/VisualReadingTool';
 import CreativeWritingPartner from '../pages/CreativeWritingPartner';
 import PragmaticAnalysisTool from '../pages/PragmaticAnalysisTool';
 import VisualDictionary from '../pages/VisualDictionary';
-import Basics from '../pages/Basics';
+import GrammarLibrary from '../pages/GrammarLibrary';
 import Tenses from '../pages/Tenses';
 import Crossword from '../pages/Crossword';
 import GrammarGaps from '../pages/GrammarGaps';
@@ -50,7 +50,7 @@ import ConceptWeaver from '../pages/ConceptWeaver';
 
 // Components
 import WelcomeTour from '/components/WelcomeTour';
-import { AnalyzeIcon, GamesIcon, DictionaryIcon, HistoryIcon, DashboardIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, BasicsIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon } from '/components/icons/Icons';
+import { AnalyzeIcon, GamesIcon, DictionaryIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, BasicsIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon } from '/components/icons/Icons';
 
 // Hooks & Types
 import useLocalStorage from '/hooks/useLocalStorage';
@@ -145,7 +145,7 @@ const App: React.FC = () => {
         'analyzer': { id: 'analyzer', label: 'Soru Analisti', icon: <AnalyzeIcon /> },
         'dialogue_completion': { id: 'dialogue_completion', label: 'Diyalog Kurucu', icon: <DialogueIcon /> },
         'pdf_importer': { id: 'pdf_importer', label: 'PDF Sınav Yükleyici', icon: <PDFImporterIcon /> },
-        'basics': { id: 'basics', label: 'Temel Bilgiler', icon: <BasicsIcon /> },
+        'grammar_library': { id: 'grammar_library', label: 'Gramer Kütüphanesi', icon: <GrammarLibraryIcon /> },
         'tenses': { id: 'tenses', label: 'Zamanlar (Tenses)', icon: <TensesIcon /> },
          'crossword': { id: 'crossword', label: 'Kelime Bulmaca', icon: <CrosswordIcon /> },
          'grammar_gaps': { id: 'grammar_gaps', label: 'Dilbilgisel Boşluklar', icon: <GrammarGapsIcon /> },
@@ -158,7 +158,7 @@ const App: React.FC = () => {
     const adaiMenuStructure = {
     main: ['dashboard', 'skill_tree', 'planner', 'tutor'],
     accordions: [
-      { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['basics', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator'] },
+      { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator'] },
       { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint', 'concept_weaver'] },
       { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
       { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
@@ -292,6 +292,7 @@ const App: React.FC = () => {
             case 'hangman': return <Hangman />;
             case 'word_sprint': return <WordSprint />;
             case 'concept_weaver': return <ConceptWeaver />;
+            case 'grammar_library': return <GrammarLibrary onAskTutor={handleAskTutor} />;
             case 'history': return <History />;
             case 'admin': return user?.email === 'admin@example.com' ? <AdminPage /> : <Dashboard onNavigate={handleTabClick} />;
             default: return <Dashboard onNavigate={handleTabClick} />;
