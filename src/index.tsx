@@ -6,7 +6,7 @@ import { AuthProvider } from '../context/AuthContext';
 import { ChallengeProvider } from '../context/ChallengeContext';
 import { VocabularyProvider } from '../context/VocabularyContext';
 import { ExamHistoryProvider } from '../context/ExamHistoryContext';
-import { PdfExamProvider } from '/context/PdfExamContext';
+import { PdfExamProvider } from '../context/PdfExamContext';
 
 // Register the service worker for PWA functionality
 if ('serviceWorker' in navigator) {
