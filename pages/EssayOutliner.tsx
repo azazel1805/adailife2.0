@@ -4,8 +4,9 @@ import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { OutlineIcon } from '../components/icons/Icons';
 
-type EssayType = 'Argumentative' | 'Expository' | 'Narrative' | 'Descriptive';
-const essayTypes: EssayType[] = ['Argumentative', 'Expository', 'Narrative', 'Descriptive'];
+type EssayType = 'Argumentative' | 'Expository' | 'Narrative' | 'Descriptive' | 'Compare and Contrast' | 'Cause and Effect' | 'Persuasive' | 'Process' | 'Problem-Solution';
+const essayTypes: EssayType[] = ['Argumentative', 'Expository', 'Narrative', 'Descriptive', 'Compare and Contrast', 'Cause and Effect', 'Persuasive', 'Process', 'Problem-Solution'];
+
 
 const EssayOutliner: React.FC = () => {
     const [essayType, setEssayType] = useState<EssayType | ''>('');
