@@ -1740,7 +1740,7 @@ ${JSON.stringify(userAnswers, null, 2)}
 export const generateEssayOutline = async (essayType: string, topic: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash-lite',
             contents: `Create a detailed essay outline for an '${essayType}' essay on the topic: "${topic}". The outline should include an introduction with a thesis statement, at least three body paragraphs with main points and supporting details, and a conclusion. Format the output clearly using headings and bullet points.`,
         });
         return response.text.trim();
@@ -1753,7 +1753,7 @@ export const generateEssayOutline = async (essayType: string, topic: string): Pr
 export const writeFullEssayFromOutline = async (topic: string, outline: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash-lite',
             contents: `Write a complete, well-structured essay on the topic "${topic}" by following this exact outline:\n\n--- OUTLINE ---\n${outline}\n\n--- END OUTLINE ---\n\nThe essay should be approximately 400-500 words long. Ensure smooth transitions between paragraphs.`,
         });
         return response.text.trim();
