@@ -459,6 +459,18 @@ export interface DictionaryEntry {
   exampleSentences: string[];
 }
 
+// Types for TR -> EN Dictionary
+export interface EnglishTranslation {
+  word: string;
+  type: string; // e.g., 'noun', 'verb'
+  example: string;
+}
+
+export interface TrToEnResult {
+  englishTranslations: EnglishTranslation[];
+}
+
+
 // Types for Visual Dictionary
 export interface IdentifiedObject {
   englishName: string;
