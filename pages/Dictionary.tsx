@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { getDictionaryEntry, getEli5Explanation } from '../services/geminiService';
+import { getDictionaryEntry, getEli5Explanation, getTurkishToEnglishTranslation } from '../services/geminiService';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { SpeakerIcon } from '../components/icons/Icons';
 import { useChallenge } from '../context/ChallengeContext';
 import { useVocabulary } from '../context/VocabularyContext';
-import { DictionaryEntry } from '../types';
+import { DictionaryEntry, TrToEnResult } from '../types';
 
 const PEXELS_API_KEY = 'BXJTqpDqYKrp57GTOT012YKebRMmDDGBfDVHoUDu3gdNNwr13TMbJLWq';
 
 const Dictionary: React.FC = () => {
   const [word, setWord] = useState('');
+  const [direction, setDirection] = useState<'en_to_tr' | 'tr_to_en'>('en_to_tr');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
+  const [trToEnResult, setTrToEnResult] = useState<TrToEnResult | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const { trackAction } = useChallenge();
@@ -68,18 +70,25 @@ const Dictionary: React.FC = () => {
     setIsLoading(true);
     setError('');
     setEntry(null);
+    setTrToEnResult(null);
     setImageUrl(null);
     setIsEli5Mode(false);
     setEli5Explanation(null);
     try {
-      const [resultText, fetchedImageUrl] = await Promise.all([
-        getDictionaryEntry(cleanedSearchTerm),
-        fetchImage(cleanedSearchTerm)
-      ]);
-      
-      const parsedResult: DictionaryEntry = JSON.parse(resultText);
-      setEntry(parsedResult);
-      setImageUrl(fetchedImageUrl);
+      if (direction === 'en_to_tr') {
+        const [resultText, fetchedImageUrl] = await Promise.all([
+          getDictionaryEntry(cleanedSearchTerm),
+          fetchImage(cleanedSearchTerm)
+        ]);
+        const parsedResult: DictionaryEntry = JSON.parse(resultText);
+        setEntry(parsedResult);
+        setImageUrl(fetchedImageUrl);
+      } else {
+        const resultText = await getTurkishToEnglishTranslation(cleanedSearchTerm);
+        const parsedResult: TrToEnResult = JSON.parse(resultText);
+        setTrToEnResult(parsedResult);
+      }
+
       trackAction('dictionary');
     } catch (e: any) {
       setError(e.message || 'Sözlük girdisi alınırken bir hata oluştu. Modelden gelen format hatalı olabilir.');
@@ -99,15 +108,14 @@ const Dictionary: React.FC = () => {
       }
   };
 
-  const handleSpeak = () => {
-    if (!word) return;
+  const handleSpeak = (textToSpeak: string) => {
+    if (!textToSpeak) return;
     window.speechSynthesis.cancel(); // Cancel any previous speech
-    const utterance = new SpeechSynthesisUtterance(word);
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     const femaleVoice = voices.find(voice => voice.lang === 'en-US' && /female/i.test(voice.name));
     utterance.voice = femaleVoice || voices.find(voice => voice.lang === 'en-US') || null;
     utterance.lang = 'en-US';
     utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
-        // Don't show an error message if the speech was simply cancelled.
         if (e.error !== 'canceled' && e.error !== 'interrupted') {
             console.error("Speech synthesis error:", e.error);
             setError("Sorry, the pronunciation could not be played.");
@@ -132,7 +140,6 @@ const Dictionary: React.FC = () => {
     const newModeState = !isEli5Mode;
     setIsEli5Mode(newModeState);
 
-    // If turning on and we don't have an explanation yet
     if (newModeState && !eli5Explanation) {
         setIsLoadingEli5(true);
         setError('');
@@ -174,7 +181,7 @@ const Dictionary: React.FC = () => {
       {entry.pronunciation && (
         <div className="flex items-center gap-3">
           <p className="text-lg text-slate-500 dark:text-slate-400 font-mono">{entry.pronunciation}</p>
-          <button onClick={handleSpeak} className="text-brand-primary hover:text-brand-secondary transition-colors" title="Telaffuzu Dinle">
+          <button onClick={() => handleSpeak(word)} className="text-brand-primary hover:text-brand-secondary transition-colors" title="Telaffuzu Dinle">
             <SpeakerIcon />
           </button>
         </div>
@@ -203,18 +210,65 @@ const Dictionary: React.FC = () => {
     </>
   );
 
+  const renderTrToEnResult = (result: TrToEnResult) => (
+    <>
+      <h3 className="font-semibold text-lg text-slate-600 dark:text-slate-400 mt-4 mb-2">İngilizce Karşılıkları:</h3>
+      <div className="space-y-3">
+        {result.englishTranslations.map((translation, index) => (
+          <div key={index} className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <span className="font-bold text-xl text-brand-primary capitalize">{translation.word}</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400 ml-2">({translation.type})</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleSpeak(translation.word)} className="text-brand-primary hover:text-brand-secondary transition-colors" title="Telaffuzu Dinle"><SpeakerIcon /></button>
+                <button 
+                  onClick={() => addWord(translation.word, word)}
+                  disabled={isWordSaved(translation.word)}
+                  className="text-2xl p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                  title={isWordSaved(translation.word) ? 'Kelime Zaten Kayıtlı' : 'Kelimeyi Kaydet'}
+                >
+                   {isWordSaved(translation.word) ? '✅' : '🔖'}
+                </button>
+              </div>
+            </div>
+            <p className="text-sm text-slate-700 dark:text-slate-300 italic">"{translation.example}"</p>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800">
-        <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-50">İngilizce Sözlük</h2>
-        <p className="mb-6 text-slate-500 dark:text-slate-400">Anlamını öğrenmek istediğiniz kelime veya ifadeyi girin.</p>
+        <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-50">Sözlük</h2>
+        <p className="mb-4 text-slate-500 dark:text-slate-400">Anlamını öğrenmek istediğiniz kelime veya ifadeyi girin.</p>
+        
+        <div className="flex justify-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg shadow-inner max-w-xs mx-auto mb-4">
+          <button 
+            onClick={() => setDirection('en_to_tr')}
+            className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${direction === 'en_to_tr' ? 'bg-brand-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+          >
+            EN &rarr; TR
+          </button>
+          <button 
+            onClick={() => setDirection('tr_to_en')}
+            className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors ${direction === 'tr_to_en' ? 'bg-brand-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+          >
+            TR &rarr; EN
+          </button>
+        </div>
+        
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={word}
             onChange={(e) => setWord(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="Örn: 'ubiquitous' veya 'break a leg'"
+            placeholder={direction === 'en_to_tr' ? "Örn: 'ubiquitous' veya 'break a leg'" : "Örn: 'geliştirmek' veya 'razı olmak'"}
             className="flex-grow p-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-brand-primary focus:outline-none text-slate-800 dark:text-slate-200 transition-colors"
             disabled={isLoading}
           />
@@ -231,35 +285,39 @@ const Dictionary: React.FC = () => {
       {isLoading && <Loader />}
       <ErrorMessage message={error} />
 
-      {entry && (
+      {(entry || trToEnResult) && (
         <div className="mt-8 bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 space-y-4">
             <div className="flex justify-between items-start">
                 <h3 className="text-4xl font-bold text-brand-primary capitalize">{word}</h3>
-                 <button 
-                    onClick={handleToggleSaveWord}
-                    disabled={!entry.turkishMeanings || entry.turkishMeanings.length === 0}
-                    className="text-3xl p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={isWordSaved(word) ? 'Kelimeyi Kaldır' : 'Kelimeyi Kaydet'}
-                 >
-                    {isWordSaved(word) ? '✅' : '🔖'}
-                 </button>
+                 {direction === 'en_to_tr' && entry && (
+                  <button 
+                      onClick={handleToggleSaveWord}
+                      disabled={!entry.turkishMeanings || entry.turkishMeanings.length === 0}
+                      className="text-3xl p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={isWordSaved(word) ? 'Kelimeyi Kaldır' : 'Kelimeyi Kaydet'}
+                  >
+                      {isWordSaved(word) ? '✅' : '🔖'}
+                  </button>
+                 )}
             </div>
-
-            <div className="flex items-center justify-end gap-2 text-sm">
-                <span className="font-semibold text-slate-500 dark:text-slate-400">5 Yaşında Gibi Anlat</span>
-                <label htmlFor="eli5-toggle" className="relative inline-flex items-center cursor-pointer">
-                    <input
-                        type="checkbox"
-                        id="eli5-toggle"
-                        className="sr-only peer"
-                        checked={isEli5Mode}
-                        onChange={handleToggleEli5Mode}
-                    />
-                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-brand-primary peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
-                </label>
-            </div>
+            
+            {direction === 'en_to_tr' && (
+              <div className="flex items-center justify-end gap-2 text-sm">
+                  <span className="font-semibold text-slate-500 dark:text-slate-400">5 Yaşında Gibi Anlat</span>
+                  <label htmlFor="eli5-toggle" className="relative inline-flex items-center cursor-pointer">
+                      <input
+                          type="checkbox"
+                          id="eli5-toggle"
+                          className="sr-only peer"
+                          checked={isEli5Mode}
+                          onChange={handleToggleEli5Mode}
+                      />
+                      <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-brand-primary peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
+                  </label>
+              </div>
+            )}
           
-          {imageUrl && !isEli5Mode && (
+          {direction === 'en_to_tr' && imageUrl && !isEli5Mode && (
             <div className="my-4 rounded-lg overflow-hidden shadow-md border-2 border-slate-200 dark:border-slate-800">
               <img 
                 src={imageUrl} 
@@ -277,7 +335,10 @@ const Dictionary: React.FC = () => {
                   <p className="mt-2">{eli5Explanation}</p>
               </div>
           ) : (
-              renderParsedEntry(entry)
+            <>
+              {direction === 'en_to_tr' && entry && renderParsedEntry(entry)}
+              {direction === 'tr_to_en' && trToEnResult && renderTrToEnResult(trToEnResult)}
+            </>
           )}
         </div>
       )}
