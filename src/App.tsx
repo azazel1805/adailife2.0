@@ -43,6 +43,8 @@ import Hangman from '../pages/Hangman';
 import WordSprint from '../pages/WordSprint';
 import ConceptWeaver from '../pages/ConceptWeaver';
 import PlacementTest from '../pages/PlacementTest';
+import EssayOutliner from '../pages/EssayOutliner';
+
 
 
 
@@ -143,6 +145,7 @@ const App: React.FC = () => {
         'visual_reading': { id: 'visual_reading', label: 'Görsel Okuma', icon: <VisualReadingIcon /> },
         'writing': { id: 'writing', label: 'Yazma Pratiği', icon: <WritingIcon /> },
         'creative_writing': { id: 'creative_writing', label: 'Yaratıcı Yazarlık', icon: <CreativeWritingIcon /> },
+        'essay_outliner': { id: 'essay_outliner', label: 'Essay Taslağı', icon: <OutlineIcon /> },
         'listening': { id: 'listening', label: 'Dinleme Pratiği', icon: <ListeningIcon /> },
         'speaking_simulator': { id: 'speaking_simulator', label: 'Konuşma Simülatörü', icon: <SpeakingSimulatorIcon /> },
         'analyzer': { id: 'analyzer', label: 'Soru Analisti', icon: <AnalyzeIcon /> },
@@ -161,7 +164,7 @@ const App: React.FC = () => {
     const adaiMenuStructure = {
     main: ['dashboard', 'skill_tree', 'planner', 'placement_test', 'tutor'],
     accordions: [
-      { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'listening', 'speaking_simulator'] },
+      { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'essay_outliner', 'listening', 'speaking_simulator'] },
       { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint', 'concept_weaver'] },
       { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
       { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
@@ -280,6 +283,7 @@ const App: React.FC = () => {
             case 'pragmatic_analyzer': return <PragmaticAnalysisTool />;
             case 'writing': return <WritingAssistant />;
             case 'creative_writing': return <CreativeWritingPartner />;
+            case 'essay_outliner': return <EssayOutliner />;
             case 'listening': return <ListeningPractice onAskTutor={handleAskTutor} />;
             case 'speaking_simulator': return <SpeakingSimulator />;
             case 'news': return <NewsReader onAskTutor={handleAskTutor} />;
