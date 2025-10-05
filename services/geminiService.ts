@@ -9,7 +9,7 @@ import {
     PhrasalVerbDeconstructionResult, WeatherData, VisualDescriptionAnalysis, DictionaryEntry,
     Scenario, SimulatorChatMessage, PragmaticAnalysisResult, PerformanceStats, IdentifiedObject, AffixData, CrosswordData, ConceptWeaverAnalysis, GrammarTopicDetails,
     GrammarSentenceFeedback, PlacementTestContent,
-    PlacementTestReport
+    PlacementTestReport, TrToEnResult
 } from '../types';
 import { parseGeneratedQuestions, parseClozeTestJsonResponse } from "../utils/questionParser";
 
@@ -687,6 +687,27 @@ const DICTIONARY_ENTRY_SCHEMA = {
     required: ["turkishMeanings", "definitions", "exampleSentences"]
 };
 
+const TR_TO_EN_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        englishTranslations: {
+            type: Type.ARRAY,
+            description: "A list of English translations for the given Turkish word.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    word: { type: Type.STRING, description: "The English translation." },
+                    type: { type: Type.STRING, description: "The part of speech in English (e.g., 'noun', 'verb', 'adjective')." },
+                    example: { type: Type.STRING, description: "A simple example sentence in English using the translated word." }
+                },
+                required: ["word", "type", "example"]
+            }
+        }
+    },
+    required: ["englishTranslations"]
+};
+
+
 const VISUAL_DICTIONARY_SCHEMA = {
     type: Type.ARRAY,
     items: {
@@ -1051,6 +1072,23 @@ export const getDictionaryEntry = async (word: string): Promise<string> => {
     } catch (error) {
         console.error("Error fetching dictionary entry:", error);
         throw new Error("Sözlük girdisi alınamadı.");
+    }
+};
+
+export const getTurkishToEnglishTranslation = async (word: string): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Provide the English translations for the Turkish word "${word}". For each translation, include its part of speech and a simple example sentence in English. Respond in JSON format according to the schema.`,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: TR_TO_EN_SCHEMA
+            }
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error fetching TR->EN translation:", error);
+        throw new Error("Çeviri alınamadı.");
     }
 };
 
