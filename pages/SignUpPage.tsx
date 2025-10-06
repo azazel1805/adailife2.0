@@ -38,6 +38,12 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSwitchToLogin }) => {
 
         const formattedCode = activationCode.trim();
 
+        if (!formattedCode) {
+            setError('Lütfen bir aktivasyon kodu giriniz.');
+            setLoading(false); // Yüklemeyi durdur
+            return; // Fonksiyonun devam etmesini engelle
+        }
+
         try {
             const codeRef = doc(db, "activationCodes", formattedCode);
             const codeSnap = await getDoc(codeRef);
