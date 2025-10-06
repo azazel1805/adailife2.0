@@ -123,7 +123,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSwitchToLogin }) => {
                             <input id="activationCode" type="text" required value={activationCode} onChange={(e) => setActivationCode(e.target.value)} placeholder="E-postanıza gelen kodu girin" className="mt-2 block w-full appearance-none rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 shadow-sm focus:border-adai-primary focus:outline-none focus:ring-2 focus:ring-adai-primary transition" />
                             <div className="text-center mt-3">
                                 <a 
-                                    href="https://www.shopier.com/39960454" 
+                                    href="https://www.shopier.com/onurtosuner" 
                                     target="_blank" 
                                     rel="noopener noreferrer" 
                                     className="text-sm font-medium text-adai-primary hover:text-adai-secondary transition-colors"
