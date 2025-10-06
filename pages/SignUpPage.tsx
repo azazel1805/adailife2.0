@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '/src/firebase';
-import { useAuth } from '../context/AuthContext'; // YENİ EKLENDİ
+import { auth, db } from '/src/firebase';
+import { doc, getDoc, writeBatch } from 'firebase/firestore';
 
 // Logo Bileşeni
 const AdaiLogo: React.FC<{ className?: string }> = ({ className }) => (
@@ -20,13 +20,6 @@ const AdaiLogo: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
-// YENİ EKLENDİ: Google İkonu SVG'si
-const GoogleIcon: React.FC = () => (
-    <svg className="w-5 h-5" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
-        <path fill="currentColor" d="M488 261.8C488 403.3 381.5 512 244 512 111.8 512 0 398.2 0 256S111.8 0 244 0c69.8 0 130.8 28.5 173.4 74.5l-68.2 66.3C314.5 112.3 282.5 96 244 96c-83.8 0-152.3 68.4-152.3 152s68.5 152 152.3 152c92.8 0 130-67.6 135-99.2H244v-76h244z"></path>
-    </svg>
-);
-
 interface SignUpPageProps {
     onSwitchToLogin: () => void;
 }
@@ -34,35 +27,63 @@ interface SignUpPageProps {
 const SignUpPage: React.FC<SignUpPageProps> = ({ onSwitchToLogin }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [activationCode, setActivationCode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { signInWithGoogle } = useAuth(); // YENİ EKLENDİ
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         setError('');
         setLoading(true);
+
+        const formattedCode = activationCode.trim();
+
         try {
-            await createUserWithEmailAndPassword(auth, email, password);
+            const codeRef = doc(db, "activationCodes", formattedCode);
+            const codeSnap = await getDoc(codeRef);
+
+            if (!codeSnap.exists() || codeSnap.data().status !== 'unused') {
+                setError('Geçersiz veya daha önce kullanılmış bir aktivasyon kodu girdiniz.');
+                setLoading(false);
+                return;
+            }
+
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            const batch = writeBatch(db);
+
+            const userProfileRef = doc(db, "users", user.uid);
+            const subscriptionEndDate = new Date();
+            subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 99); 
+            
+            batch.set(userProfileRef, {
+                email: user.email,
+                createdAt: new Date(),
+                subscription: {
+                    status: "active",
+                    endDate: subscriptionEndDate,
+                }
+            });
+
+            batch.update(codeRef, {
+                status: "used",
+                usedBy: user.uid,
+                usedAt: new Date()
+            });
+
+            await batch.commit();
+            
         } catch (err: any) {
             if (err.code === 'auth/email-already-in-use') {
                 setError('Bu e-posta adresi zaten kullanılıyor.');
             } else if (err.code === 'auth/weak-password') {
                 setError('Şifre en az 6 karakter olmalıdır.');
             } else {
-                setError('Kayıt sırasında bir hata oluştu.');
+                setError('Kayıt sırasında bir hata oluştu. Lütfen bilgilerinizi kontrol edin.');
             }
+        } finally {
             setLoading(false);
-        }
-    };
-
-    // YENİ EKLENDİ: Google ile giriş/kayıt fonksiyonu
-    const handleGoogleSignIn = async () => {
-        setError('');
-        try {
-            await signInWithGoogle();
-        } catch (err) {
-            setError('Google ile kayıt sırasında bir hata oluştu.');
         }
     };
 
@@ -77,12 +98,8 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSwitchToLogin }) => {
 
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 space-y-6">
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                            Hesap Oluştur
-                        </h1>
-                        <p className="text-slate-500 dark:text-slate-400 mt-2">
-                            ADAI dünyasına katıl ve öğrenmeye başla!
-                        </p>
+                        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Hesap Oluştur</h1>
+                        <p className="text-slate-500 dark:text-slate-400 mt-2">ADAI dünyasına katıl ve öğrenmeye başla!</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -91,45 +108,38 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSwitchToLogin }) => {
                             <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 block w-full appearance-none rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 shadow-sm focus:border-adai-primary focus:outline-none focus:ring-2 focus:ring-adai-primary transition" />
                         </div>
                         <div>
-                            <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">Şifre</label>
+                            <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">Şifre Belirle</label>
                             <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 block w-full appearance-none rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 shadow-sm focus:border-adai-primary focus:outline-none focus:ring-2 focus:ring-adai-primary transition" />
+                        </div>
+                        <div>
+                            <label htmlFor="activationCode" className="text-sm font-medium text-slate-700 dark:text-slate-300">Aktivasyon Kodu</label>
+                            <input id="activationCode" type="text" required value={activationCode} onChange={(e) => setActivationCode(e.target.value)} placeholder="E-postanıza gelen kodu girin" className="mt-2 block w-full appearance-none rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 shadow-sm focus:border-adai-primary focus:outline-none focus:ring-2 focus:ring-adai-primary transition" />
+                            <div className="text-center mt-3">
+                                <a 
+                                    href="https://www.shopier.com/39960454" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-sm font-medium text-adai-primary hover:text-adai-secondary transition-colors"
+                                >
+                                    Aktivasyon kodun yok mu? Hemen satın al!
+                                </a>
+                            </div>
                         </div>
 
                         {error && <p className="text-sm text-red-500 text-center font-medium">{error}</p>}
 
                         <div>
                             <button type="submit" disabled={loading} className="w-full flex justify-center rounded-lg bg-adai-primary px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-adai-secondary disabled:cursor-not-allowed disabled:opacity-70">
-                                {loading ? 'Hesap Oluşturuluyor...' : 'Kayıt Ol'}
+                                {loading ? 'Hesap Oluşturuluyor...' : 'Kayıt Ol ve Başla'}
                             </button>
                         </div>
                     </form>
-                    
-                    {/* YENİ EKLENDİ: Ayıraç */}
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-slate-300 dark:border-slate-700" />
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="bg-white dark:bg-slate-900 px-2 text-slate-500 dark:text-slate-400">veya</span>
-                        </div>
-                    </div>
-                    
-                    {/* YENİ EKLENDİ: Google ile Kayıt Ol butonu */}
-                    <div>
-                        <button onClick={handleGoogleSignIn} type="button" className="w-full inline-flex justify-center items-center gap-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-adai-primary">
-                            <GoogleIcon />
-                            <span>Google ile Kayıt Ol</span>
-                        </button>
-                    </div>
-
                 </div>
 
                 <div className="text-center mt-6">
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                         Zaten bir hesabın var mı?{' '}
-                        <button onClick={onSwitchToLogin} className="font-semibold text-adai-primary hover:text-adai-secondary">
-                            Giriş Yap
-                        </button>
+                        <button onClick={onSwitchToLogin} className="font-semibold text-adai-primary hover:text-adai-secondary">Giriş Yap</button>
                     </p>
                 </div>
             </div>
