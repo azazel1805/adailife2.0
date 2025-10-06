@@ -3,32 +3,75 @@ import {
     User, 
     onAuthStateChanged, 
     signInWithEmailAndPassword, 
-    signOut,
-    GoogleAuthProvider,    // YENİ EKLENDİ
-    signInWithPopup        // YENİ EKLENDİ
+    signOut
 } from 'firebase/auth';
-import { auth } from '/src/firebase';
+import { auth, db } from '/src/firebase';
+import { doc, onSnapshot, Timestamp } from "firebase/firestore";
 
+// Kullanıcının Firestore'daki profil verisi için bir tip tanımı
+interface UserProfile {
+    email: string;
+    createdAt: Timestamp;
+    subscription?: {
+        status: string;
+        endDate: Timestamp; // Firestore'dan Timestamp bu şekilde gelir
+    }
+}
+
+// Context'in tip tanımı
 interface AuthContextType {
     user: User | null;
+    userProfile: UserProfile | null;
+    isSubscribed: boolean; // Üyelik durumunu kolayca kontrol etmek için
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
-    signInWithGoogle: () => Promise<void>; // YENİ EKLENDİ: Google ile giriş fonksiyonu
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        let profileUnsubscribe: () => void | undefined; // Firestore listener'ını temizlemek için
+
+        const authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
-            setLoading(false);
+            
+            // Eğer daha önce bir profil dinleyicisi varsa temizle
+            if (profileUnsubscribe) {
+                profileUnsubscribe();
+            }
+
+            if (currentUser) {
+                // Kullanıcı giriş yaptıysa, Firestore'dan profilini ANLIK olarak dinle
+                const userDocRef = doc(db, "users", currentUser.uid);
+                profileUnsubscribe = onSnapshot(userDocRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        setUserProfile(snapshot.data() as UserProfile);
+                    } else {
+                        console.error("Kullanıcı profili bulunamadı. Bu durum, kayıt sırasında bir hata oluştuğunu gösterebilir.");
+                        setUserProfile(null);
+                    }
+                    setLoading(false);
+                });
+            } else {
+                // Kullanıcı çıkış yaptıysa, tüm verileri temizle
+                setUserProfile(null);
+                setLoading(false);
+            }
         });
-        return () => unsubscribe();
+
+        // Component DOM'dan kaldırıldığında her iki listener'ı da temizle
+        return () => {
+            authUnsubscribe();
+            if (profileUnsubscribe) {
+                profileUnsubscribe();
+            }
+        };
     }, []);
 
     const login = async (email: string, password: string) => {
@@ -36,18 +79,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await signInWithEmailAndPassword(auth, email, password);
         } catch (error) {
             console.error("Giriş sırasında hata oluştu:", error);
-            throw error;
-        }
-    };
-    
-    // YENİ EKLENDİ: Google ile giriş fonksiyonunun mantığı
-    const signInWithGoogle = async () => {
-        const provider = new GoogleAuthProvider();
-        try {
-            await signInWithPopup(auth, provider);
-            // Başarılı girişten sonra onAuthStateChanged tetiklenecek ve user state'ini güncelleyecektir.
-        } catch (error) {
-            console.error("Google ile giriş sırasında hata oluştu:", error);
             throw error;
         }
     };
@@ -60,12 +91,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
     
+    // Üyelik durumunu kontrol eden kullanışlı bir boolean değişken
+    const isSubscribed = 
+        !!userProfile && 
+        userProfile.subscription?.status === 'active' &&
+        userProfile.subscription.endDate.toDate() > new Date();
+    
     const value = {
         user,
+        userProfile,
+        isSubscribed,
         loading,
         login,
         logout,
-        signInWithGoogle, // YENİ EKLENDİ: Fonksiyonu context'e ekliyoruz
     };
 
     return (
