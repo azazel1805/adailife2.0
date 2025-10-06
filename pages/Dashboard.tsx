@@ -424,7 +424,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const WelcomeHeader = () => (
     <div className="flex justify-between items-center">
         <div>
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Hoşgeldin, {user?.displayName || user?.email?.split('@')}!</h2>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">
+  Hoşgeldin, {user?.displayName || user?.email?.split('@')[0]}!
+</h2>
             <p className="text-slate-500 dark:text-slate-400 mt-1">Bugün İngilizce yolculuğunda ne yapmak istersin?</p>
         </div>
     </div>
