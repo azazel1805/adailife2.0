@@ -61,7 +61,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSwitchToLogin }) => {
 
             const userProfileRef = doc(db, "users", user.uid);
             const subscriptionEndDate = new Date();
-            subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 99); 
+            subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30); // 30 günlük üyelik
             
             batch.set(userProfileRef, {
                 email: user.email,
@@ -81,6 +81,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSwitchToLogin }) => {
             await batch.commit();
             
         } catch (err: any) {
+            console.error("Detaylı Hata:", err); // Hatanın tamamını konsola yazdır
             if (err.code === 'auth/email-already-in-use') {
                 setError('Bu e-posta adresi zaten kullanılıyor.');
             } else if (err.code === 'auth/weak-password') {
