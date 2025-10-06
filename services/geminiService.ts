@@ -1690,7 +1690,7 @@ export const generatePlacementTest = async (): Promise<string> => {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-lite',
             contents: `Generate a comprehensive CEFR placement test in English. The test must cover Grammar, Listening, Reading, and Writing skills, progressing in difficulty from A2 to C1 level. The output must be a JSON object following the schema.
-- Grammar: 12 multiple-choice questions.
+- Grammar: 20 multiple-choice questions.
 - Listening: A short script (6-8 sentences) and 4 multiple-choice questions.
 - Reading: A short passage (around 150-200 words) and 4 multiple-choice questions.
 - Writing: One open-ended prompt.
