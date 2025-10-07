@@ -8,14 +8,15 @@ type BasicsModule = 'colors' | 'numbers' | 'alphabet' | 'days' | 'dates' | 'seas
 const PEXELS_API_KEY = 'BXJTqpDqYKrp57GTOT012YKebRMmDDGBfDVHoUDu3gdNNwr13TMbJLWq';
 
 const moduleData = {
+    verbToBe: { title: 'Verb "to be"', icon: <VerbToBeIcon />, description: 'En temel fiilin kullanımını öğren.' },
     colors: { title: 'Renkleri Öğren', icon: '🎨', description: 'Renkleri ve okunuşlarını keşfet.' },
     numbers: { title: 'Sayıları Öğren', icon: '🔢', description: '0-100 arası sayıları ve okunuşlarını keşfet.' },
     alphabet: { title: 'Etkileşimli Alfabe', icon: '🔤', description: 'Harflerin telaffuzunu dinle.' },
     days: { title: 'Haftanın Günleri', icon: '🗓️', description: 'Günlerin telaffuzunu ve sırasını öğren.' },
     dates: { title: 'Tarih Okuma', icon: '📅', description: 'Seçtiğin tarihi İngilizce olarak dinle.' },
     seasons: { title: 'Mevsimler Rehberi', icon: '☀️', description: 'Ayların hangi mevsime ait olduğunu gör.' },
-    time: { title: 'Dijital Saat Okuma', icon: '⏰', description: 'Ayarladığın saati İngilizce olarak dinle.' },
-    verbToBe: { title: 'Verb "to be"', icon: <VerbToBeIcon />, description: 'En temel fiilin kullanımını öğren.' }
+    time: { title: 'Dijital Saat Okuma', icon: '⏰', description: 'Ayarladığın saati İngilizce olarak dinle.' }
+    
 };
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -365,8 +366,23 @@ const VerbToBeExplainer: React.FC = () => {
                 {isLoadingImage ? <Loader /> : imageUrl ? <img src={imageUrl} alt={activeSection.pexelsQuery} className="w-full h-full object-cover" /> : <p className="text-slate-500">Görsel bulunamadı.</p>}
             </div>
 
+            {activeSection.usage && activeSection.usage.length > 0 && (
+                <div>
+                    <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">Kullanım Alanları</h4>
+                    <div className="space-y-3">
+                        {activeSection.usage.map((useCase, index) => (
+                            <div key={index} className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg">
+                                <h5 className="font-bold text-adai-primary">{useCase.title}</h5>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{useCase.description}</p>
+                                <Example sentence={useCase.example} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div>
-                <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">Örnekler</h4>
+                <h4 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">Çekim Örnekleri</h4>
                 <div className="space-y-4">
                     {activeSection.examples.map(ex => (
                          <div key={ex.person} className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg">
