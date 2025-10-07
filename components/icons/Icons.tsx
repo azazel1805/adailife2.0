@@ -56,6 +56,7 @@ export const OutlineIcon: React.FC = () => <span role="img" aria-label="Outline 
 
 // FIX: Add missing VerbToBeIcon to resolve import error in Basics.tsx.
 export const VerbToBeIcon: React.FC = () => <span role="img" aria-label="Verb to be icon" className="text-xl">🧱</span>;
+export const BasicsIcon: React.FC = () => <span role="img" aria-label="Basics icon" className="text-xl">🧱</span>;
 
 
 
