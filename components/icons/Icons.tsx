@@ -52,6 +52,8 @@ export const GamesIcon: React.FC = () => <span role="img" aria-label="Games icon
 export const GrammarLibraryIcon: React.FC = () => <span role="img" aria-label="Grammar Library icon" className="text-xl">🏛️</span>;
 export const PlacementTestIcon: React.FC = () => <span role="img" aria-label="Placement test icon" className="text-xl">🧭</span>;
 export const OutlineIcon: React.FC = () => <span role="img" aria-label="Outline icon" className="text-xl">📑</span>;
+export const SentenceBuilderIcon: React.FC = () => <span role="img" aria-label="Sentence builder icon" className="text-xl">🏗️</span>;
+
 
 
 // FIX: Add missing VerbToBeIcon to resolve import error in Basics.tsx.
