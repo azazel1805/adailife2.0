@@ -3,7 +3,7 @@ import { SpeakerIcon, VerbToBeIcon, QAIcon, SentenceBuilderIcon } from '../compo
 import { verbToBeData, ToBeData } from '../data/verbToBeData';
 import Loader from '../components/Loader';
 
-type BasicsModule = 'colors' | 'numbers' | 'alphabet' | 'days' | 'dates' | 'seasons' | 'time' | 'verbToBe' | 'basicQA' | 'sentenceBuilder';
+type BasicsModule = 'colors' | 'numbers' | 'alphabet' | 'days' | 'dates' | 'seasons' | 'time' | 'verbToBe' | 'questionFormer' | 'sentenceBuilder';
 
 const PEXELS_API_KEY = 'BXJTqpDqYKrp57GTOT012YKebRMmDDGBfDVHoUDu3gdNNwr13TMbJLWq';
 
@@ -16,7 +16,7 @@ const moduleData = {
     seasons: { title: 'Mevsimler Rehberi', icon: '☀️', description: 'Ayların hangi mevsime ait olduğunu gör.' },
     time: { title: 'Dijital Saat Okuma', icon: '⏰', description: 'Ayarladığın saati İngilizce olarak dinle.' },
     verbToBe: { title: 'Verb "to be"', icon: <VerbToBeIcon />, description: 'En temel fiilin kullanımını öğren.' },
-    basicQA: { title: 'Temel Soru & Cevaplar', icon: <QAIcon />, description: 'Yaygın soruları ve cevaplarını öğren.' },
+    questionFormer: { title: 'Soru Oluşturma Alıştırması', icon: <QAIcon />, description: 'Altı çizili öğeyi soran doğru soruyu oluştur.' },
     sentenceBuilder: { title: 'İnteraktif Cümle Kurucu', icon: <SentenceBuilderIcon />, description: 'Kelimeleri sürükleyip bırakarak basit cümleler kur.' },
 };
 
@@ -401,96 +401,146 @@ const VerbToBeExplainer: React.FC = () => {
     );
 };
 
-const BasicQAExplorer: React.FC = () => {
-    const qaPairs = [
-        { q: "What's your name?", a: ["My name is [Your Name]."], tr: "Adın ne?" },
-        { q: "How are you?", a: ["I'm fine, thank you.", "I'm doing well, and you?"], tr: "Nasılsın?" },
-        { q: "Where are you from?", a: ["I'm from [Your Country]."], tr: "Nerelisin?" },
-        { q: "How old are you?", a: ["I am [Your Age] years old."], tr: "Kaç yaşındasın?" },
-        { q: "What time is it?", a: ["It's [Time]. (e.g., three o'clock)"], tr: "Saat kaç?" },
-        { q: "Do you speak English?", a: ["Yes, a little.", "No, I don't speak English."], tr: "İngilizce konuşuyor musun?" },
-        { q: "Thank you.", a: ["You're welcome.", "No problem."], tr: "Teşekkür ederim." },
-        { q: "Excuse me.", a: ["Yes, how can I help you?"], tr: "Affedersiniz." },
-        { q: "Where is the bathroom?", a: ["It's over there."], tr: "Banyo nerede?" },
+const QuestionFormer: React.FC = () => {
+    const exercises = [
+        { statement: 'I watch a film every night.', underlinedPart: 'a film', correctQuestion: 'What do you watch every night?' },
+        { statement: 'She goes to the library on Mondays.', underlinedPart: 'on Mondays', correctQuestion: 'When does she go to the library?' },
+        { statement: 'He is playing in the garden.', underlinedPart: 'in the garden', correctQuestion: 'Where is he playing?' },
+        { statement: 'They are happy because they won the game.', underlinedPart: 'because they won the game', correctQuestion: 'Why are they happy?' },
+        { statement: 'Michael drove his new car.', underlinedPart: 'Michael', correctQuestion: 'Who drove his new car?' }
     ];
 
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [userAnswer, setUserAnswer] = useState('');
+    const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
+
+    const currentExercise = exercises[currentIndex];
+
+    const renderSentence = () => {
+        const parts = currentExercise.statement.split(currentExercise.underlinedPart);
+        return (
+            <p className="text-xl font-semibold text-center bg-slate-100 dark:bg-slate-800 p-4 rounded-lg">
+                {parts[0]}
+                <strong className="underline decoration-adai-primary decoration-4 underline-offset-4">{currentExercise.underlinedPart}</strong>
+                {parts[1]}
+            </p>
+        );
+    };
+
+    const normalizeAnswer = (str: string) => {
+        return str.trim().toLowerCase().replace(/\?$/, '');
+    };
+
+    const handleCheck = () => {
+        if (normalizeAnswer(userAnswer) === normalizeAnswer(currentExercise.correctQuestion)) {
+            setFeedback('correct');
+        } else {
+            setFeedback('incorrect');
+        }
+    };
+
+    const handleNext = () => {
+        setCurrentIndex(prev => (prev + 1) % exercises.length);
+        setUserAnswer('');
+        setFeedback(null);
+    };
+
     return (
-        <div>
-            <h3 className="text-xl font-bold mb-4 text-center">Basic Questions & Answers</h3>
-            <div className="space-y-4">
-                {qaPairs.map((pair, index) => (
-                    <div key={index} className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                            <div>
-                                <p className="font-bold text-adai-primary">{pair.q}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 italic">{pair.tr}</p>
-                            </div>
-                            <button onClick={() => speak(pair.q)} className="text-xl p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"><SpeakerIcon /></button>
-                        </div>
-                        <div className="border-t border-slate-200 dark:border-slate-700 pt-2 space-y-2">
-                            {pair.a.map((ans, ansIndex) => (
-                                <div key={ansIndex} className="flex justify-between items-center text-sm text-slate-700 dark:text-slate-300">
-                                    <p>A: {ans}</p>
-                                    <button onClick={() => speak(ans.replace(/\[.*?\]/g, ''))} className="text-lg p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"><SpeakerIcon /></button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
+        <div className="space-y-6 text-center">
+             <p className="text-slate-500 dark:text-slate-400">Cümlede altı çizili bölümü soracak şekilde İngilizce soru cümlesini yazın.</p>
+            {renderSentence()}
+            <input
+                type="text"
+                value={userAnswer}
+                onChange={(e) => setUserAnswer(e.target.value)}
+                placeholder="Sorunuzu buraya yazın..."
+                disabled={feedback !== null}
+                className="w-full p-3 text-lg bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-adai-primary focus:outline-none"
+            />
+
+            {feedback && (
+                 <div className={`p-3 rounded-lg font-bold text-white ${feedback === 'correct' ? 'bg-green-500' : 'bg-red-500'}`}>
+                    {feedback === 'correct' ? (
+                        '🎉 Doğru!'
+                    ) : (
+                        <>
+                            <p>Tam değil. Doğru cevap:</p>
+                            <p className="font-mono mt-1">"{currentExercise.correctQuestion}"</p>
+                        </>
+                    )}
+                </div>
+            )}
+            
+            {feedback !== null ? (
+                 <button onClick={handleNext} className="w-full bg-adai-primary text-white font-bold py-3 rounded-lg">
+                    Sonraki Soru &rarr;
+                </button>
+            ) : (
+                <button onClick={handleCheck} disabled={!userAnswer.trim()} className="w-full bg-adai-primary text-white font-bold py-3 rounded-lg disabled:bg-slate-400">
+                    Kontrol Et
+                </button>
+            )}
         </div>
     );
 };
 
 const SentenceBuilder: React.FC = () => {
     const sentenceData = [
-        { tr: 'Ben bir öğrenciyim.', en: 'I am a student .' },
-        { tr: 'O, elma sever.', en: 'She likes apples .' },
-        { tr: 'Biz futbol oynuyoruz.', en: 'We are playing football .' },
-        { tr: 'Köpek hızlı koşar.', en: 'The dog runs fast .' },
-        { tr: 'Onlar kitap okuyorlar.', en: 'They are reading books .' },
-        { tr: 'Sen mutlusun.', en: 'You are happy .' },
-        { tr: 'O bir doktor.', en: 'He is a doctor .' },
-        { tr: 'Hava bugün güzel.', en: 'The weather is nice today .' },
-        { tr: 'Biz hazırız.', en: 'We are ready .' },
-        { tr: 'Onlar bahçedeler.', en: 'They are in the garden .' },
-        { tr: 'Bu bir kitap.', en: 'This is a book .' },
-        { tr: 'Annem bir öğretmen.', en: 'My mother is a teacher .' },
-        { tr: 'Ben her gün süt içerim.', en: 'I drink milk every day .' },
-        { tr: 'O bir ofiste çalışır.', en: 'He works in an office .' },
-        { tr: 'Sen İngilizce konuşursun.', en: 'You speak English .' },
-        { tr: 'Onlar Londra\'da yaşarlar.', en: 'They live in London .' },
-        { tr: 'Güneş doğudan yükselir.', en: 'The sun rises in the east .' },
-        { tr: 'Kediler balık sever.', en: 'Cats like fish .' },
-        { tr: 'Biz erken uyanırız.', en: 'We wake up early .' },
-        { tr: 'Ben kahve içiyorum.', en: 'I am drinking coffee .' },
-        { tr: 'O televizyon izliyor.', en: 'He is watching TV .' },
-        { tr: 'O akşam yemeği pişiriyor.', en: 'She is cooking dinner .' },
-        { tr: 'Dışarıda yağmur yağıyor.', en: 'It is raining outside .' },
-        { tr: 'Sen müzik dinliyorsun.', en: 'You are listening to music .' },
-        { tr: 'Bebek uyuyor.', en: 'The baby is sleeping .' },
-        { tr: 'Biz otobüs bekliyoruz.', en: 'We are waiting for the bus .' },
-        { tr: 'Seni yarın arayacağım.', en: 'I will call you tomorrow .' },
-        { tr: 'O partiye gelecek.', en: 'He will come to the party .' },
-        { tr: 'O yeni bir elbise alacak.', en: 'She will buy a new dress .' },
-        { tr: 'Yarın hava güneşli olacak.', en: 'It will be sunny tomorrow .' },
-        { tr: 'Biz onları ziyaret edeceğiz.', en: 'We will visit them .' },
-        { tr: 'Onlar projeyi bitirecekler.', en: 'They will finish the project .' },
-        { tr: 'Sen bu filmi seveceksin.', en: 'You will love this movie .' },
-        { tr: 'Ben yüzebilirim.', en: 'I can swim .' },
-        { tr: 'O gitar çalabilir.', en: 'She can play the guitar .' },
-        { tr: 'O hızlı koşabilir.', en: 'He can run fast .' },
-        { tr: 'Biz sana yardım edebiliriz.', en: 'We can help you .' },
-        { tr: 'Onlar Fransızca konuşabilirler.', en: 'They can speak French .' },
-        { tr: 'Pencereyi açabilirsin.', en: 'You can open the window .' },
-        { tr: 'Kuşlar uçabilir.', en: 'Birds can fly .' },
-        { tr: 'Dün sinemaya gittim.', en: 'I went to the cinema yesterday .' },
-        { tr: 'O sınav için çalıştı.', en: 'She studied for the exam .' },
-        { tr: 'O yeni bir telefon aldı.', en: 'He bought a new phone .' },
-        { tr: 'Biz güzel bir film izledik.', en: 'We watched a great movie .' },
-        { tr: 'Onlar ailelerini ziyaret ettiler.', en: 'They visited their family .' },
-        { tr: 'Sen ödevini bitirdin.', en: 'You finished your homework .' },
-        { tr: 'Dün yağmur yağdı.', en: 'It rained yesterday .' }
+        { tr: 'Ben bir öğrenci değilim.', en: 'I am not a student .' }, // Olumsuz
+        { tr: 'Sen mutlu musun ?', en: 'Are you happy ?' }, // Soru
+        { tr: 'O bir doktor.', en: 'He is a doctor .' }, // Olumlu
+        { tr: 'Hava bugün güzel mi ?', en: 'Is the weather nice today ?' }, // Soru
+        { tr: 'Biz hazır değiliz.', en: 'We are not ready .' }, // Olumsuz
+        { tr: 'Onlar bahçedeler.', en: 'They are in the garden .' }, // Olumlu
+        { tr: 'Bu bir kitap değil.', en: 'This is not a book .' }, // Olumsuz
+        { tr: 'Annen bir öğretmen mi ?', en: 'Is your mother a teacher ?' }, // Soru
+
+        // --- Present Simple ---
+        { tr: 'O, elma sevmez.', en: 'She does not like apples .' }, // Olumsuz
+        { tr: 'Sen İngilizce konuşur musun ?', en: 'Do you speak English ?' }, // Soru
+        { tr: 'Köpek hızlı koşar.', en: 'The dog runs fast .' }, // Olumlu
+        { tr: 'O bir ofiste çalışmıyor.', en: 'He does not work in an office .' }, // Olumsuz
+        { tr: 'Onlar Londra\'da mı yaşarlar ?', en: 'Do they live in London ?' }, // Soru
+        { tr: 'Ben her gün süt içerim.', en: 'I drink milk every day .' }, // Olumlu
+        { tr: 'Kediler balık sever mi ?', en: 'Do cats like fish ?' }, // Soru
+        { tr: 'Biz erken uyanmayız.', en: 'We do not wake up early .' }, // Olumsuz
+
+        // --- Present Continuous ---
+        { tr: 'Biz futbol oynuyor muyuz ?', en: 'Are we playing football ?' }, // Soru
+        { tr: 'Onlar kitap okuyorlar.', en: 'They are reading books .' }, // Olumlu
+        { tr: 'O televizyon izlemiyor.', en: 'He is not watching TV .' }, // Olumsuz
+        { tr: 'O akşam yemeği mi pişiriyor ?', en: 'Is she cooking dinner ?' }, // Soru
+        { tr: 'Dışarıda yağmur yağmıyor.', en: 'It is not raining outside .' }, // Olumsuz
+        { tr: 'Sen müzik mi dinliyorsun ?', en: 'Are you listening to music ?' }, // Soru
+        { tr: 'Bebek uyuyor.', en: 'The baby is sleeping .' }, // Olumlu
+        { tr: 'Ben kahve içmiyorum.', en: 'I am not drinking coffee .' }, // Olumsuz
+        
+        // --- 'will' (Future Simple) ---
+        { tr: 'Seni yarın aramayacağım.', en: 'I will not call you tomorrow .' }, // Olumsuz
+        { tr: 'O partiye gelecek mi ?', en: 'Will he come to the party ?' }, // Soru
+        { tr: 'O yeni bir elbise alacak.', en: 'She will buy a new dress .' }, // Olumlu
+        { tr: 'Yarın hava güneşli olmayacak.', en: 'It will not be sunny tomorrow .' }, // Olumsuz
+        { tr: 'Onlar projeyi bitirecekler mi ?', en: 'Will they finish the project ?' }, // Soru
+        { tr: 'Biz onları ziyaret edeceğiz.', en: 'We will visit them .' }, // Olumlu
+        { tr: 'Bu filmi sevecek misin ?', en: 'Will you love this movie ?' }, // Soru
+        
+        // --- 'can' ---
+        { tr: 'Ben yüzemem.', en: 'I cannot swim .' }, // Olumsuz
+        { tr: 'O gitar çalabilir mi ?', en: 'Can she play the guitar ?' }, // Soru
+        { tr: 'O hızlı koşabilir.', en: 'He can run fast .' }, // Olumlu
+        { tr: 'Sana yardım edebilir miyiz ?', en: 'Can we help you ?' }, // Soru
+        { tr: 'Onlar Fransızca konuşamazlar.', en: 'They cannot speak French .' }, // Olumsuz
+        { tr: 'Pencereyi açabilir misin ?', en: 'Can you open the window ?' }, // Soru
+        { tr: 'Kuşlar uçabilir.', en: 'Birds can fly .' }, // Olumlu
+
+        // --- Past Simple ---
+        { tr: 'Dün sinemaya gitmedim.', en: 'I did not go to the cinema yesterday .' }, // Olumsuz
+        { tr: 'O sınav için çalıştı mı ?', en: 'Did she study for the exam ?' }, // Soru
+        { tr: 'O yeni bir telefon aldı.', en: 'He bought a new phone .' }, // Olumlu
+        { tr: 'Biz güzel bir film izlemedik.', en: 'We did not watch a great movie .' }, // Olumsuz
+        { tr: 'Onlar ailelerini ziyaret ettiler mi ?', en: 'Did they visit their family ?' }, // Soru
+        { tr: 'Ödevini bitirdin mi ?', en: 'Did you finish your homework ?' }, // Soru
+        { tr: 'Dün yağmur yağmadı.', en: 'It did not rain yesterday .' } // Olumsuz
     ];
     const [currentIndex, setCurrentIndex] = useState(0);
     const [wordPool, setWordPool] = useState<string[]>([]);
@@ -571,7 +621,7 @@ const ModuleModal: React.FC<{ module: BasicsModule; onClose: () => void }> = ({ 
             case 'seasons': return <SeasonsGuide />;
             case 'time': return <DigitalTimeReader />;
             case 'verbToBe': return <VerbToBeExplainer />;
-            case 'basicQA': return <BasicQAExplorer />;
+            case 'questionFormer': return <QuestionFormer />;
             case 'sentenceBuilder': return <SentenceBuilder />;
             default: return null;
         }
