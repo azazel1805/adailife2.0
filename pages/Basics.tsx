@@ -3,26 +3,20 @@ import { SpeakerIcon, VerbToBeIcon } from '../components/icons/Icons';
 import { verbToBeData, ToBeData } from '../data/verbToBeData';
 import Loader from '../components/Loader';
 
-type BasicsModule = 'colors' | 'numbers' | 'alphabet' | 'dates' | 'seasons' | 'time' | 'verbToBe';
+type BasicsModule = 'colors' | 'numbers' | 'alphabet' | 'days' | 'dates' | 'seasons' | 'time' | 'verbToBe';
 
 const PEXELS_API_KEY = 'BXJTqpDqYKrp57GTOT012YKebRMmDDGBfDVHoUDu3gdNNwr13TMbJLWq';
 
 const moduleData = {
-    colors: { title: 'Renk Avı', icon: '🎨', description: 'İsmi verilen rengi bul.' },
-    numbers: { title: 'Sayı Dikte', icon: '🔢', description: 'Duyduğun sayıyı yaz.' },
+    colors: { title: 'Renkleri Öğren', icon: '🎨', description: 'Renkleri ve okunuşlarını keşfet.' },
+    numbers: { title: 'Sayıları Öğren', icon: '🔢', description: '0-100 arası sayıları ve okunuşlarını keşfet.' },
     alphabet: { title: 'Etkileşimli Alfabe', icon: '🔤', description: 'Harflerin telaffuzunu dinle.' },
+    days: { title: 'Haftanın Günleri', icon: '🗓️', description: 'Günlerin telaffuzunu ve sırasını öğren.' },
     dates: { title: 'Tarih Okuma', icon: '📅', description: 'Seçtiğin tarihi İngilizce olarak dinle.' },
     seasons: { title: 'Mevsimler Rehberi', icon: '☀️', description: 'Ayların hangi mevsime ait olduğunu gör.' },
     time: { title: 'Dijital Saat Okuma', icon: '⏰', description: 'Ayarladığın saati İngilizce olarak dinle.' },
     verbToBe: { title: 'Verb "to be"', icon: <VerbToBeIcon />, description: 'En temel fiilin kullanımını öğren.' }
 };
-
-const colors = [
-    { name: 'red', hex: '#ef4444' }, { name: 'blue', hex: '#3b82f6' }, { name: 'green', hex: '#22c55e' },
-    { name: 'yellow', hex: '#eab308' }, { name: 'orange', hex: '#f97316' }, { name: 'purple', hex: '#a855f7' },
-    { name: 'pink', hex: '#ec4899' }, { name: 'black', hex: '#000000' }, { name: 'white', hex: '#ffffff' },
-    { name: 'gray', hex: '#6b7280' }, { name: 'brown', hex: '#78350f' }, { name: 'cyan', hex: '#06b6d4' }
-];
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const seasonsData: { [key: string]: string[] } = {
@@ -31,8 +25,6 @@ const seasonsData: { [key: string]: string[] } = {
     Summer: ['June', 'July', 'August'],
     Autumn: ['September', 'October', 'November']
 };
-
-const shuffleArray = (array: any[]) => [...array].sort(() => Math.random() - 0.5);
 
 const speak = (text: string) => {
     if (typeof window.speechSynthesis === 'undefined') return;
@@ -44,89 +36,69 @@ const speak = (text: string) => {
 
 
 // Mini-Apps
-const ColorHunt: React.FC = () => {
-    const [targetColor, setTargetColor] = useState(colors[0]);
-    const [options, setOptions] = useState<typeof colors>([]);
-    const [feedback, setFeedback] = useState<{ message: string; isCorrect: boolean } | null>(null);
-
-    const generateNewRound = useCallback(() => {
-        const newTarget = colors[Math.floor(Math.random() * colors.length)];
-        setTargetColor(newTarget);
-        const distractors = shuffleArray(colors.filter(c => c.name !== newTarget.name)).slice(0, 3);
-        setOptions(shuffleArray([newTarget, ...distractors]));
-        setFeedback(null);
-        speak(newTarget.name);
-    }, []);
-
-    useEffect(() => {
-        generateNewRound();
-    }, [generateNewRound]);
-
-    const handleSelect = (colorName: string) => {
-        if (feedback) return;
-        const isCorrect = colorName === targetColor.name;
-        setFeedback({ message: isCorrect ? 'Correct!' : 'Try Again', isCorrect });
-        if (isCorrect) {
-            setTimeout(generateNewRound, 1000);
-        }
-    };
+const ColorExplorer: React.FC = () => {
+    const colors = [
+        { name: 'red', hex: '#ef4444', tr: 'Kırmızı', textColor: 'text-white' },
+        { name: 'blue', hex: '#3b82f6', tr: 'Mavi', textColor: 'text-white' },
+        { name: 'green', hex: '#22c55e', tr: 'Yeşil', textColor: 'text-white' },
+        { name: 'yellow', hex: '#eab308', tr: 'Sarı', textColor: 'text-black' },
+        { name: 'orange', hex: '#f97316', tr: 'Turuncu', textColor: 'text-white' },
+        { name: 'purple', hex: '#a855f7', tr: 'Mor', textColor: 'text-white' },
+        { name: 'pink', hex: '#ec4899', tr: 'Pembe', textColor: 'text-black' },
+        { name: 'black', hex: '#000000', tr: 'Siyah', textColor: 'text-white' },
+        { name: 'white', hex: '#ffffff', tr: 'Beyaz', textColor: 'text-black' },
+        { name: 'gray', hex: '#6b7280', tr: 'Gri', textColor: 'text-white' },
+        { name: 'brown', hex: '#78350f', tr: 'Kahverengi', textColor: 'text-white' },
+        { name: 'cyan', hex: '#06b6d4', tr: 'Camgöbeği', textColor: 'text-black' }
+    ];
 
     return (
-        <div className="text-center">
-            <h3 className="text-xl font-bold">What color is this?</h3>
-            <div className="flex justify-center items-center gap-2 my-4">
-                <p className="text-2xl font-semibold capitalize">{targetColor.name}</p>
-                <button onClick={() => speak(targetColor.name)} className="text-2xl p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"><SpeakerIcon /></button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                {options.map(opt => (
-                    <button key={opt.name} onClick={() => handleSelect(opt.name)}
-                        style={{ backgroundColor: opt.hex, border: opt.name === 'white' ? '1px solid #ccc' : 'none' }}
-                        className="h-24 rounded-lg transition transform hover:scale-105"
-                    />
+        <div>
+            <h3 className="text-xl font-bold mb-4 text-center">Colors</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {colors.map(color => (
+                    <button 
+                        key={color.name}
+                        onClick={() => speak(color.name)}
+                        style={{ backgroundColor: color.hex, border: color.name === 'white' ? '1px solid #ccc' : 'none' }}
+                        className={`p-4 h-32 rounded-lg flex flex-col justify-between items-start transition transform hover:scale-105 ${color.textColor}`}
+                    >
+                        <div className="text-left">
+                            <p className="text-lg font-bold capitalize">{color.name}</p>
+                            <p className="text-sm opacity-80">{color.tr}</p>
+                        </div>
+                        <SpeakerIcon />
+                    </button>
                 ))}
             </div>
-            {feedback && <p className={`mt-4 font-bold ${feedback.isCorrect ? 'text-green-500' : 'text-red-500'}`}>{feedback.message}</p>}
         </div>
     );
 };
 
-const NumberDictation: React.FC = () => {
-    const [number, setNumber] = useState(0);
-    const [input, setInput] = useState('');
-    const [feedback, setFeedback] = useState<string | null>(null);
-
-    const generateNewNumber = useCallback(() => {
-        const newNum = Math.floor(Math.random() * 1000) + 1;
-        setNumber(newNum);
-        setInput('');
-        setFeedback(null);
-        speak(String(newNum));
-    }, []);
-    
-    useEffect(() => generateNewNumber(), [generateNewNumber]);
-
-    const checkAnswer = () => {
-        if (parseInt(input) === number) {
-            setFeedback('Correct! 🎉');
-            setTimeout(generateNewNumber, 1500);
-        } else {
-            setFeedback('Not quite, try again!');
-        }
-    };
+const NumberExplorer: React.FC = () => {
+    const numbers = [
+        { num: 0, word: 'zero' }, { num: 1, word: 'one' }, { num: 2, word: 'two' }, { num: 3, word: 'three' },
+        { num: 4, word: 'four' }, { num: 5, word: 'five' }, { num: 6, word: 'six' }, { num: 7, word: 'seven' },
+        { num: 8, word: 'eight' }, { num: 9, word: 'nine' }, { num: 10, word: 'ten' }, { num: 11, word: 'eleven' },
+        { num: 12, word: 'twelve' }, { num: 13, word: 'thirteen' }, { num: 14, word: 'fourteen' }, { num: 15, word: 'fifteen' },
+        { num: 16, word: 'sixteen' }, { num: 17, word: 'seventeen' }, { num: 18, word: 'eighteen' }, { num: 19, word: 'nineteen' },
+        { num: 20, word: 'twenty' }, { num: 30, word: 'thirty' }, { num: 40, word: 'forty' }, { num: 50, word: 'fifty' },
+        { num: 60, word: 'sixty' }, { num: 70, word: 'seventy' }, { num: 80, word: 'eighty' }, { num: 90, word: 'ninety' },
+        { num: 100, word: 'one hundred' }
+    ];
 
     return (
-        <div className="text-center">
-            <h3 className="text-xl font-bold mb-4">Listen and Type the Number</h3>
-            <button onClick={() => speak(String(number))} className="bg-adai-secondary text-white font-bold py-3 px-6 rounded-lg mb-4">
-                Play Sound 🔊
-            </button>
-            <input type="number" value={input} onChange={e => setInput(e.target.value)}
-                className="w-full p-3 text-center text-2xl font-bold bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg" />
-            <button onClick={checkAnswer} className="mt-4 w-full bg-adai-primary text-white font-bold py-3 rounded-lg">
-                Check
-            </button>
-            {feedback && <p className="mt-4 font-bold">{feedback}</p>}
+        <div>
+            <h3 className="text-xl font-bold mb-4 text-center">Numbers 0-100</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {numbers.map(({ num, word }) => (
+                    <button key={num} onClick={() => speak(word)}
+                        className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-center transition transform hover:scale-105 hover:bg-adai-primary hover:text-white">
+                        <p className="text-3xl font-bold">{num}</p>
+                        <p className="text-sm capitalize font-semibold">{word}</p>
+                    </button>
+                ))}
+            </div>
         </div>
     );
 };
@@ -141,6 +113,32 @@ const InteractiveAlphabet: React.FC = () => {
                     <button key={letter} onClick={() => speak(letter)}
                         className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg font-bold text-2xl hover:bg-adai-primary hover:text-white transition">
                         {letter}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const DaysOfWeek: React.FC = () => {
+    const days = [
+        { en: 'Monday', tr: 'Pazartesi' }, { en: 'Tuesday', tr: 'Salı' }, { en: 'Wednesday', tr: 'Çarşamba' },
+        { en: 'Thursday', tr: 'Perşembe' }, { en: 'Friday', tr: 'Cuma' }, { en: 'Saturday', tr: 'Cumartesi' },
+        { en: 'Sunday', tr: 'Pazar' }
+    ];
+
+    return (
+        <div>
+            <h3 className="text-xl font-bold mb-4 text-center">Days of the Week</h3>
+            <div className="space-y-3">
+                {days.map(day => (
+                    <button key={day.en} onClick={() => speak(day.en)}
+                        className="w-full p-4 bg-slate-100 dark:bg-slate-800 rounded-lg flex justify-between items-center transition transform hover:scale-105 hover:bg-adai-primary hover:text-white">
+                        <div className="text-left">
+                            <p className="text-lg font-bold">{day.en}</p>
+                            <p className="text-sm opacity-80">{day.tr}</p>
+                        </div>
+                        <SpeakerIcon />
                     </button>
                 ))}
             </div>
@@ -392,9 +390,10 @@ const ModuleModal: React.FC<{ module: BasicsModule; onClose: () => void }> = ({ 
 
     const renderModule = () => {
         switch (module) {
-            case 'colors': return <ColorHunt />;
-            case 'numbers': return <NumberDictation />;
+            case 'colors': return <ColorExplorer />;
+            case 'numbers': return <NumberExplorer />;
             case 'alphabet': return <InteractiveAlphabet />;
+            case 'days': return <DaysOfWeek />;
             case 'dates': return <DateReader />;
             case 'seasons': return <SeasonsGuide />;
             case 'time': return <DigitalTimeReader />;
