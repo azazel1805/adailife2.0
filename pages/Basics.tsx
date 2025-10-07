@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { SpeakerIcon, VerbToBeIcon } from '../components/icons/Icons';
+import { SpeakerIcon, VerbToBeIcon, QAIcon } from '../components/icons/Icons';
 import { verbToBeData, ToBeData } from '../data/verbToBeData';
 import Loader from '../components/Loader';
 
-type BasicsModule = 'colors' | 'numbers' | 'alphabet' | 'days' | 'dates' | 'seasons' | 'time' | 'verbToBe';
+type BasicsModule = 'colors' | 'numbers' | 'alphabet' | 'days' | 'dates' | 'seasons' | 'time' | 'verbToBe' | 'basicQA';
 
 const PEXELS_API_KEY = 'BXJTqpDqYKrp57GTOT012YKebRMmDDGBfDVHoUDu3gdNNwr13TMbJLWq';
 
@@ -15,8 +15,8 @@ const moduleData = {
     days: { title: 'Haftanın Günleri', icon: '🗓️', description: 'Günlerin telaffuzunu ve sırasını öğren.' },
     dates: { title: 'Tarih Okuma', icon: '📅', description: 'Seçtiğin tarihi İngilizce olarak dinle.' },
     seasons: { title: 'Mevsimler Rehberi', icon: '☀️', description: 'Ayların hangi mevsime ait olduğunu gör.' },
-    time: { title: 'Dijital Saat Okuma', icon: '⏰', description: 'Ayarladığın saati İngilizce olarak dinle.' }
-    
+    time: { title: 'Dijital Saat Okuma', icon: '⏰', description: 'Ayarladığın saati İngilizce olarak dinle.' },
+    basicQA: { title: 'Temel Soru & Cevaplar', icon: <QAIcon />, description: 'Yaygın soruları ve cevaplarını öğren.' }
 };
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -400,6 +400,47 @@ const VerbToBeExplainer: React.FC = () => {
     );
 };
 
+const BasicQAExplorer: React.FC = () => {
+    const qaPairs = [
+        { q: "What's your name?", a: ["My name is [Your Name]."], tr: "Adın ne?" },
+        { q: "How are you?", a: ["I'm fine, thank you.", "I'm doing well, and you?"], tr: "Nasılsın?" },
+        { q: "Where are you from?", a: ["I'm from [Your Country]."], tr: "Nerelisin?" },
+        { q: "How old are you?", a: ["I am [Your Age] years old."], tr: "Kaç yaşındasın?" },
+        { q: "What time is it?", a: ["It's [Time]. (e.g., three o'clock)"], tr: "Saat kaç?" },
+        { q: "Do you speak English?", a: ["Yes, a little.", "No, I don't speak English."], tr: "İngilizce konuşuyor musun?" },
+        { q: "Thank you.", a: ["You're welcome.", "No problem."], tr: "Teşekkür ederim." },
+        { q: "Excuse me.", a: ["Yes, how can I help you?"], tr: "Affedersiniz." },
+        { q: "Where is the bathroom?", a: ["It's over there."], tr: "Banyo nerede?" },
+    ];
+
+    return (
+        <div>
+            <h3 className="text-xl font-bold mb-4 text-center">Basic Questions & Answers</h3>
+            <div className="space-y-4">
+                {qaPairs.map((pair, index) => (
+                    <div key={index} className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                            <div>
+                                <p className="font-bold text-adai-primary">{pair.q}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 italic">{pair.tr}</p>
+                            </div>
+                            <button onClick={() => speak(pair.q)} className="text-xl p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"><SpeakerIcon /></button>
+                        </div>
+                        <div className="border-t border-slate-200 dark:border-slate-700 pt-2 space-y-2">
+                            {pair.a.map((ans, ansIndex) => (
+                                <div key={ansIndex} className="flex justify-between items-center text-sm text-slate-700 dark:text-slate-300">
+                                    <p>A: {ans}</p>
+                                    <button onClick={() => speak(ans.replace(/\[.*?\]/g, ''))} className="text-lg p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"><SpeakerIcon /></button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 
 const ModuleModal: React.FC<{ module: BasicsModule; onClose: () => void }> = ({ module, onClose }) => {
     const { title } = moduleData[module];
@@ -414,6 +455,7 @@ const ModuleModal: React.FC<{ module: BasicsModule; onClose: () => void }> = ({ 
             case 'seasons': return <SeasonsGuide />;
             case 'time': return <DigitalTimeReader />;
             case 'verbToBe': return <VerbToBeExplainer />;
+            case 'basicQA': return <BasicQAExplorer />;
             default: return null;
         }
     };
