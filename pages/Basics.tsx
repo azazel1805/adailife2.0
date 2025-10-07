@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { SpeakerIcon, VerbToBeIcon, QAIcon } from '../components/icons/Icons';
+import { SpeakerIcon, VerbToBeIcon, QAIcon, SentenceBuilderIcon } from '../components/icons/Icons';
 import { verbToBeData, ToBeData } from '../data/verbToBeData';
 import Loader from '../components/Loader';
 
-type BasicsModule = 'colors' | 'numbers' | 'alphabet' | 'days' | 'dates' | 'seasons' | 'time' | 'verbToBe' | 'basicQA';
+type BasicsModule = 'colors' | 'numbers' | 'alphabet' | 'days' | 'dates' | 'seasons' | 'time' | 'verbToBe' | 'basicQA' | 'sentenceBuilder';
 
 const PEXELS_API_KEY = 'BXJTqpDqYKrp57GTOT012YKebRMmDDGBfDVHoUDu3gdNNwr13TMbJLWq';
 
 const moduleData = {
-    verbToBe: { title: 'Verb "to be"', icon: <VerbToBeIcon />, description: 'En temel fiilin kullanımını öğren.' },
     colors: { title: 'Renkleri Öğren', icon: '🎨', description: 'Renkleri ve okunuşlarını keşfet.' },
     numbers: { title: 'Sayıları Öğren', icon: '🔢', description: '0-100 arası sayıları ve okunuşlarını keşfet.' },
     alphabet: { title: 'Etkileşimli Alfabe', icon: '🔤', description: 'Harflerin telaffuzunu dinle.' },
@@ -16,7 +15,9 @@ const moduleData = {
     dates: { title: 'Tarih Okuma', icon: '📅', description: 'Seçtiğin tarihi İngilizce olarak dinle.' },
     seasons: { title: 'Mevsimler Rehberi', icon: '☀️', description: 'Ayların hangi mevsime ait olduğunu gör.' },
     time: { title: 'Dijital Saat Okuma', icon: '⏰', description: 'Ayarladığın saati İngilizce olarak dinle.' },
-    basicQA: { title: 'Temel Soru & Cevaplar', icon: <QAIcon />, description: 'Yaygın soruları ve cevaplarını öğren.' }
+    verbToBe: { title: 'Verb "to be"', icon: <VerbToBeIcon />, description: 'En temel fiilin kullanımını öğren.' },
+    basicQA: { title: 'Temel Soru & Cevaplar', icon: <QAIcon />, description: 'Yaygın soruları ve cevaplarını öğren.' },
+    sentenceBuilder: { title: 'İnteraktif Cümle Kurucu', icon: <SentenceBuilderIcon />, description: 'Kelimeleri sürükleyip bırakarak basit cümleler kur.' },
 };
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -441,6 +442,79 @@ const BasicQAExplorer: React.FC = () => {
     );
 };
 
+const SentenceBuilder: React.FC = () => {
+    const sentenceData = [
+        { tr: 'Ben bir öğrenciyim.', en: 'I am a student .' },
+        { tr: 'O, elma sever.', en: 'She likes apples .' },
+        { tr: 'Biz futbol oynuyoruz.', en: 'We are playing football .' },
+        { tr: 'Köpek hızlı koşar.', en: 'The dog runs fast .' },
+        { tr: 'Onlar kitap okuyorlar.', en: 'They are reading books .' }
+    ];
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [wordPool, setWordPool] = useState<string[]>([]);
+    const [sentenceArea, setSentenceArea] = useState<string[]>([]);
+    const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
+
+    useEffect(() => {
+        const currentWords = sentenceData[currentIndex].en.split(' ');
+        setWordPool([...currentWords].sort(() => Math.random() - 0.5));
+        setSentenceArea([]);
+        setFeedback(null);
+    }, [currentIndex]);
+    
+    const handleCheck = () => {
+        if (sentenceArea.join(' ') === sentenceData[currentIndex].en) {
+            setFeedback('correct');
+            speak('Correct!');
+        } else {
+            setFeedback('incorrect');
+            speak('Try again.');
+        }
+    };
+    
+    const handleNext = () => setCurrentIndex(prev => (prev + 1) % sentenceData.length);
+    const handleReset = () => {
+        setSentenceArea([]);
+        setWordPool([...sentenceData[currentIndex].en.split(' ')].sort(() => Math.random() - 0.5));
+        setFeedback(null);
+    };
+
+    return (
+        <div className="text-center">
+            <p className="mb-2 text-slate-500 dark:text-slate-400">Türkçe cümlenin İngilizce karşılığını kelimeleri doğru sıraya koyarak oluşturun.</p>
+            <p className="text-lg font-bold mb-4 text-adai-primary">"{sentenceData[currentIndex].tr}"</p>
+            
+            <div className="min-h-[6rem] bg-slate-200 dark:bg-slate-800 p-4 rounded-lg flex flex-wrap gap-2 items-center justify-center border-2 border-dashed border-slate-400">
+                {sentenceArea.map((word, i) => (
+                    <button key={i} onClick={() => { setSentenceArea(p => p.filter((_, idx) => idx !== i)); setWordPool(p => [...p, word]); }} className="px-4 py-2 bg-white dark:bg-slate-700 rounded-md font-semibold cursor-pointer">{word}</button>
+                ))}
+            </div>
+
+            <div className="my-4 text-2xl font-bold">↓</div>
+            
+            <div className="min-h-[6rem] bg-slate-100 dark:bg-slate-700 p-4 rounded-lg flex flex-wrap gap-2 items-center justify-center">
+                 {wordPool.map((word, i) => (
+                    <button key={i} onClick={() => { setWordPool(p => p.filter((_, idx) => idx !== i)); setSentenceArea(p => [...p, word]); }} className="px-4 py-2 bg-white dark:bg-slate-800 rounded-md font-semibold cursor-pointer">{word}</button>
+                ))}
+            </div>
+            
+            {feedback && (
+                <div className={`mt-4 p-2 rounded-lg font-bold text-white ${feedback === 'correct' ? 'bg-green-500' : 'bg-red-500'}`}>
+                    {feedback === 'correct' ? '🎉 Doğru!' : '❌ Tekrar Dene'}
+                </div>
+            )}
+
+            <div className="mt-4 flex gap-2">
+                <button onClick={handleReset} className="flex-1 bg-slate-500 text-white py-2 rounded-lg">Sıfırla</button>
+                {feedback === 'correct' ? (
+                    <button onClick={handleNext} className="flex-1 bg-green-600 text-white py-2 rounded-lg">Sonraki Cümle &rarr;</button>
+                ) : (
+                    <button onClick={handleCheck} disabled={sentenceArea.length === 0} className="flex-1 bg-adai-primary text-white py-2 rounded-lg disabled:bg-slate-400">Kontrol Et</button>
+                )}
+            </div>
+        </div>
+    );
+};
 
 const ModuleModal: React.FC<{ module: BasicsModule; onClose: () => void }> = ({ module, onClose }) => {
     const { title } = moduleData[module];
@@ -456,6 +530,7 @@ const ModuleModal: React.FC<{ module: BasicsModule; onClose: () => void }> = ({ 
             case 'time': return <DigitalTimeReader />;
             case 'verbToBe': return <VerbToBeExplainer />;
             case 'basicQA': return <BasicQAExplorer />;
+            case 'sentenceBuilder': return <SentenceBuilder />;
             default: return null;
         }
     };
