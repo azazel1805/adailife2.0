@@ -404,10 +404,27 @@ const VerbToBeExplainer: React.FC = () => {
 const QuestionFormer: React.FC = () => {
     const exercises = [
         { statement: 'I watch a film every night.', underlinedPart: 'a film', correctQuestion: 'What do you watch every night?' },
-        { statement: 'She goes to the library on Mondays.', underlinedPart: 'on Mondays', correctQuestion: 'When does she go to the library?' },
+        { statement: 'She goes to the library on Mondays.', underlinedPart: 'on Mondays', correctQuestion: 'How often does she go to the library?' },
         { statement: 'He is playing in the garden.', underlinedPart: 'in the garden', correctQuestion: 'Where is he playing?' },
         { statement: 'They are happy because they won the game.', underlinedPart: 'because they won the game', correctQuestion: 'Why are they happy?' },
-        { statement: 'Michael drove his new car.', underlinedPart: 'Michael', correctQuestion: 'Who drove his new car?' }
+        { statement: 'Michael drove his new car.', underlinedPart: 'Michael', correctQuestion: 'Who drove his new car?' },
+        { "statement": "The keys are on the table.", "underlinedPart": "on the table", "correctQuestion": "Where are the keys?" },
+        { "statement": "He is a doctor.", "underlinedPart": "a doctor", "correctQuestion": "What is his job?" },
+        { "statement": "She was at home yesterday.", "underlinedPart": "yesterday", "correctQuestion": "When was she at home?" },
+        { "statement": "They live in London.", "underlinedPart": "in London", "correctQuestion": "Where do they live?" },
+        { "statement": "He reads the newspaper in the morning.", "underlinedPart": "in the morning", "correctQuestion": "When does he read the newspaper?" },
+        { "statement": "Maria works at the bank.", "underlinedPart": "Maria", "correctQuestion": "Who works at the bank?" },
+        { "statement": "We go to the gym twice a week.", "underlinedPart": "twice a week", "correctQuestion": "How often do you go to the gym?" },
+        { "statement": "I am reading a history book.", "underlinedPart": "a history book", "correctQuestion": "What are you reading?" },
+        { "statement": "She is waiting for the bus.", "underlinedPart": "the bus", "correctQuestion": "What is she waiting for?" },
+        { "statement": "They are crying because their team lost.", "underlinedPart": "because their team lost", "correctQuestion": "Why are they crying?" },
+        { "statement": "He can play the guitar very well.", "underlinedPart": "very well", "correctQuestion": "How can he play the guitar?" },
+        { "statement": "She can meet you at the coffee shop.", "underlinedPart": "at the coffee shop", "correctQuestion": "Where can she meet me?" },
+        { "statement": "They can speak two languages.", "underlinedPart": "two languages", "correctQuestion": "What can they speak?" },
+        { "statement": "I bought a new shirt yesterday.", "underlinedPart": "yesterday", "correctQuestion": "When did you buy a new shirt?" },
+        { "statement": "She went to the party with her friends.", "underlinedPart": "with her friends", "correctQuestion": "Who did she go to the party with?" },
+        { "statement": "He finished his homework at 10 PM.", "underlinedPart": "at 10 PM", "correctQuestion": "What time did he finish his homework?" },
+        { "statement": "They travelled to Rome by plane.", "underlinedPart": "by plane", "correctQuestion": "How did they travel to Rome?" }
     ];
 
     const [currentIndex, setCurrentIndex] = useState(0);
