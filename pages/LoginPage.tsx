@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import WelcomeTour from '../components/WelcomeTour';
+import FeaturesAccordion from '../components/FeaturesAccordion';
 
 // Logo Bileşeni
 const AdaiLogo: React.FC<{ className?: string }> = ({ className }) => (
@@ -29,8 +30,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignUp }) => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
-
     const [showTour, setShowTour] = useState(false);
+    const [showFeatures, setShowFeatures] = useState(false);
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -49,40 +50,47 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignUp }) => {
         }
     };
 
-    // DOĞRU - Artık her şey tek bir <>...</> sarmalayıcı içinde
     return (
         <>
             {showTour && <WelcomeTour onFinish={() => setShowTour(false)} />}
             
-            <div className="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-950 px-4">
+            <div className="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-950 px-4 py-12">
                 <div className="w-full max-w-md mx-auto">
-                    <div className="text-center mb-8">
-                        <div className="inline-block p-4 bg-slate-900 dark:bg-slate-800 rounded-full shadow-lg">
-                            <AdaiLogo className="w-20 h-20" />
-                        </div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 space-y-6">
-                        <div className="text-center">
-                            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Tekrar Hoş Geldin!</h1>
-                            <p className="text-slate-500 dark:text-slate-400 mt-2">İngilizce yolculuğuna devam etmeye hazır mısın?</p>
-                        </div>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div>
-                                <label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">E-posta Adresi</label>
-                                <input id="email" name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 block w-full appearance-none rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 shadow-sm focus:border-adai-primary focus:outline-none focus:ring-2 focus:ring-adai-primary transition" />
+                    
+                    {!showFeatures && (
+                        <>
+                            <div className="text-center mb-8">
+                                <div className="inline-block p-4 bg-slate-900 dark:bg-slate-800 rounded-full shadow-lg">
+                                    <AdaiLogo className="w-20 h-20" />
+                                </div>
                             </div>
-                            <div>
-                                <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">Şifre</label>
-                                <input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 block w-full appearance-none rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 shadow-sm focus:border-adai-primary focus:outline-none focus:ring-2 focus:ring-adai-primary transition" />
+                            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 space-y-6">
+                                <div className="text-center">
+                                    <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Tekrar Hoş Geldin!</h1>
+                                    <p className="text-slate-500 dark:text-slate-400 mt-2">İngilizce yolculuğuna devam etmeye hazır mısın?</p>
+                                </div>
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div>
+                                        <label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">E-posta Adresi</label>
+                                        <input id="email" name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 block w-full appearance-none rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 shadow-sm focus:border-adai-primary focus:outline-none focus:ring-2 focus:ring-adai-primary transition" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">Şifre</label>
+                                        <input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 block w-full appearance-none rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-400 shadow-sm focus:border-adai-primary focus:outline-none focus:ring-2 focus:ring-adai-primary transition" />
+                                    </div>
+                                    {error && <p className="text-sm text-red-500 text-center font-medium">{error}</p>}
+                                    <div>
+                                        <button type="submit" disabled={loading} className="w-full flex justify-center rounded-lg bg-adai-primary px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-adai-secondary disabled:cursor-not-allowed disabled:opacity-70">
+                                            {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
-                            {error && <p className="text-sm text-red-500 text-center font-medium">{error}</p>}
-                            <div>
-                                <button type="submit" disabled={loading} className="w-full flex justify-center rounded-lg bg-adai-primary px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-adai-secondary disabled:cursor-not-allowed disabled:opacity-70">
-                                    {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                        </>
+                    )}
+
+                    {showFeatures && <FeaturesAccordion />}
+
                     <div className="text-center mt-6">
                         <p className="text-sm text-slate-500 dark:text-slate-400">
                             Hesabın yok mu?{' '}
@@ -99,14 +107,21 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignUp }) => {
                                 üyelik satın al!
                             </a>
                         </p>
-                         <div className="mt-8 border-t border-slate-200 dark:border-slate-800 pt-6">
+                         <div className="mt-8 border-t border-slate-200 dark:border-slate-800 pt-6 flex justify-center items-center gap-6">
                                  <button 
                                     onClick={() => setShowTour(true)}
                                     className="text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-adai-primary dark:hover:text-adai-primary transition-colors"
                                 >
-                                    Uygulamayı Keşfet ✨
+                                    Uygulama Turu ✨
                                 </button>
-                            </div>
+                                
+                                <button 
+                                    onClick={() => setShowFeatures(!showFeatures)}
+                                    className="text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-adai-primary dark:hover:text-adai-primary transition-colors"
+                                >
+                                    {showFeatures ? 'Giriş Yap' : 'Özellikleri Gör'}
+                                </button>
+                         </div>
                     </div>
                 </div>
             </div>
