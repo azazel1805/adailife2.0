@@ -11,9 +11,9 @@ interface GrammarLibraryProps {
 }
 
 const grammarTopics = {
-    "Başlangıç (A1-A2)": ["Present Simple", "Present Continuous", "Past Simple", "Articles (a, an, the)", "Prepositions of Place (in, on, at)", "Verb 'to be'", "Future Tenses (will vs. going to)"],
-    "Orta (B1-B2)": ["Present Perfect", "Present Perfect Continuous", "Past Continuous", "Conditionals (Type 1 & 2)", "Modals (can, could, should, must)", "Passive Voice (Simple Tenses)", "Gerunds and Infinitives"],
-    "İleri (C1-C2)": [ "Past Perfect", "Future Perfect", "Causatives", "Relative Clauses", "Conditionals (Type 3 & Mixed)", "Advanced Modals (might have, should have)", "Reported Speech", "Subjunctive Mood"]
+    "Başlangıç (A1-A2)": ["Present Simple", "Present Continuous", "Past Simple", "Future Tenses (will vs. going to)", "Frequency Adverbs", "Articles (a, an, the)", "Prepositions of Place", "Verb 'to be'", "Quantifiers", "Comparatives", "Superlatives", "Modals (can, must, have to, should)", "Adverbs of Manner"],
+    "Orta (B1-B2)": ["Present Perfect", "Present Perfect Continuous", "Past Continuous", "Used To", "Conditionals (Type 1 & 2)", "Relative Clauses (defining)", "Passive Voice (Simple Tenses)", "Gerunds and Infinitives", "Reported Speech"],
+    "İleri (C1-C2)": [ "Past Perfect", "Future Perfect", "Causatives", "Conditionals (Type 3 & Mixed)", "Advanced Modals (might have, should have)", "Reported Speech", "Subjunctive Mood"]
 };
 
 const InteractiveSentence: React.FC<{ example: InteractiveExample }> = ({ example }) => {
