@@ -1762,3 +1762,37 @@ export const writeFullEssayFromOutline = async (topic: string, outline: string):
         throw new Error("Kompozisyon yazılırken bir hata oluştu.");
     }
 };
+
+export const convertImageToText = async (file: File): Promise<string> => {
+    const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+    };
+
+    const imagePart = {
+        inlineData: {
+            mimeType: file.type,
+            data: await arrayBufferToBase64(await file.arrayBuffer()),
+        },
+    };
+
+    const textPart = {
+        text: `Bu resimdeki el yazısını metne dönüştür. İçeriğe uygun bir başlık ekleyerek metni düzgün bir şekilde biçimlendir. Yalnızca biçimlendirilmiş düz metni döndür.`,
+    };
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [imagePart, textPart] },
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error converting image to text:", error);
+        throw new Error("Görsel metne dönüştürülürken bir hata oluştu. Lütfen görselin net olduğundan emin olun.");
+    }
+};
