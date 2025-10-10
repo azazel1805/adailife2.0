@@ -54,6 +54,7 @@ export const PlacementTestIcon: React.FC = () => <span role="img" aria-label="Pl
 export const OutlineIcon: React.FC = () => <span role="img" aria-label="Outline icon" className="text-xl">📑</span>;
 export const SentenceBuilderIcon: React.FC = () => <span role="img" aria-label="Sentence builder icon" className="text-xl">🏗️</span>;
 export const PhysicalDescriptionIcon: React.FC = () => <span role="img" aria-label="Physical description icon" className="text-xl">🧑‍🎨</span>;
+export const HandwritingConverterIcon: React.FC = () => <span role="img" aria-label="Handwriting converter icon" className="text-xl">📸✍️</span>;
 
 
 
