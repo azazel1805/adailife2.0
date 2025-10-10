@@ -45,6 +45,7 @@ import ConceptWeaver from '../pages/ConceptWeaver';
 import PlacementTest from '../pages/PlacementTest';
 import EssayOutliner from '../pages/EssayOutliner';
 import Basics from '../pages/Basics';
+import HandwritingConverter from '../pages/HandwritingConverter';
 import PhysicalDescriptionTool from '../pages/PhysicalDescriptionTool';
 
 
@@ -58,7 +59,7 @@ import PhysicalDescriptionTool from '../pages/PhysicalDescriptionTool';
 
 // Components
 import WelcomeTour from '/components/WelcomeTour';
-import { AnalyzeIcon, GamesIcon, DictionaryIcon, BasicsIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, PlacementTestIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon, OutlineIcon, PhysicalDescriptionIcon } from '/components/icons/Icons';
+import { AnalyzeIcon, GamesIcon, DictionaryIcon, BasicsIcon, HandwritingConverterIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, PlacementTestIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon, OutlineIcon, PhysicalDescriptionIcon } from '/components/icons/Icons';
 
 // Hooks & Types
 import useLocalStorage from '/hooks/useLocalStorage';
@@ -165,12 +166,14 @@ const App: React.FC = () => {
         'concept_weaver': { id: 'concept_weaver', label: 'Kavram Dokuyucu', icon: <ConceptWeaverIcon /> },
         'physical_description': { id: 'physical_description', label: 'Fiziksel Betimleme', icon: <PhysicalDescriptionIcon /> },
         'admin': { id: 'admin', label: 'Admin Panel', icon: <AdminIcon /> },
+        'handwriting_converter': { id: 'handwriting_converter', label: 'El Yazısı Dönüştürücü', icon: <HandwritingConverterIcon /> },
+
     };
 
     const adaiMenuStructure = {
     main: ['dashboard', 'skill_tree', 'planner', 'placement_test', 'tutor'],
     accordions: [
-      { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'basics', 'physical_description', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'essay_outliner', 'listening', 'speaking_simulator'] },
+      { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'basics', 'physical_description', 'handwriting_converter', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'essay_outliner', 'listening', 'speaking_simulator'] },
       { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint', 'concept_weaver'] },
       { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
       { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
@@ -295,6 +298,7 @@ const App: React.FC = () => {
             case 'news': return <NewsReader onAskTutor={handleAskTutor} />;
             case 'dictionary': return <Dictionary />;
             case 'basics': return <Basics />;
+            case 'handwriting_converter': return <HandwritingConverter />;
             case 'visual_dictionary': return <VisualDictionary />;
             case 'dialogue_completion': return <DialogueCompletion />;
             case 'vocabulary': return <VocabularyTrainer />;
