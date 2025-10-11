@@ -99,7 +99,7 @@ const TranslationAnalyst: React.FC = () => {
                              <ResultCard title="Doğal Çeviri" className="bg-green-50 border-l-4 border-green-400">
                                 <p className="font-semibold text-base">"{result.translations.natural}"</p>
                             </ResultCard>
-                             <ResultCard title="Akademik (YDS) Çeviri" className="bg-purple-50 border-l-4 border-purple-300">
+                             <ResultCard title="Akademik Çeviri" className="bg-purple-50 border-l-4 border-purple-300">
                                 <p className="italic">"{result.translations.academic}"</p>
                             </ResultCard>
                         </div>
