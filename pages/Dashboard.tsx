@@ -415,9 +415,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false); 
   const [favoriteTabs, setFavoriteTabs] = useLocalStorage<Tab[]>(`favorite-tabs-${user}`,
-  const unlockedAchievements = useMemo(() => {
-    return allAchievements.filter(ach => ach.isUnlocked(history, vocabularyList, challengeState));
-  }, [history, vocabularyList, challengeState]);
+  
 
   const WelcomeHeader = () => (
     <div className="flex justify-between items-center">
