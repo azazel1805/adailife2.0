@@ -10,7 +10,7 @@ import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { useChallenge } from '../context/ChallengeContext';
 import { useVocabulary } from '../context/VocabularyContext';
-import { VocabularyIcon, TargetIcon, FireIcon, PhrasalVerbIcon, LocationIcon, PrepositionIcon, EditIcon } from '../components/icons/Icons';
+import { VocabularyIcon, TargetIcon, FireIcon, PhrasalVerbIcon, LocationIcon, PrepositionIcon } from '../components/icons/Icons';
 import { allAchievements } from '../achievements';
 import Confetti from '../components/Confetti';
 import { useAuth } from '../context/AuthContext';
@@ -432,136 +432,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     </div>
   );
 
-    const FavoritesModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen, onClose }) => {
-    if (!isOpen) return null;
-    const MAX_FAVORITES = 8;
-    const [tempFavorites, setTempFavorites] = useState(favoriteTabs);
-
-    const handleToggle = (tabId: Tab) => {
-        setTempFavorites(prev => {
-            if (prev.includes(tabId)) {
-                return prev.filter(t => t !== tabId);
-            } else {
-                if (prev.length >= MAX_FAVORITES) {
-                    // Silently fail or show a subtle message
-                    return prev;
-                }
-                return [...prev, tabId];
-            }
-        });
-    };
-
-    const handleSave = () => {
-        setFavoriteTabs(tempFavorites);
-        onClose();
-    };
-
-    const renderToolCheckbox = (tabId: Tab) => {
-        const tab = allTabs[tabId];
-        // Exclude some tabs from being favorited
-        if (!tab || ['dashboard', 'history', 'admin'].includes(tabId)) return null;
-
-        const isChecked = tempFavorites.includes(tabId);
-        const isDisabled = !isChecked && tempFavorites.length >= MAX_FAVORITES;
-        
-        return (
-            <label key={tab.id} className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${isChecked ? 'bg-adai-primary/20 border-adai-primary' : 'border-transparent bg-slate-100 dark:bg-slate-800'} ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                <input 
-                    type="checkbox" 
-                    checked={isChecked}
-                    disabled={isDisabled}
-                    onChange={() => handleToggle(tab.id)}
-                    className="w-5 h-5 rounded text-adai-primary focus:ring-adai-secondary dark:bg-slate-700 dark:border-slate-600"
-                />
-                <span className="text-2xl">{tab.icon}</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{tab.label}</span>
-            </label>
-        );
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl flex flex-col h-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Hızlı Erişimi Düzenle</h3>
-                    <button onClick={onClose} className="text-slate-500 dark:text-slate-400 text-2xl hover:text-slate-900 dark:hover:text-slate-50">&times;</button>
-                </div>
-
-                <div className="p-6 flex-grow overflow-y-auto space-y-6">
-                    <p className="text-slate-500 dark:text-slate-400">En sık kullandığınız {MAX_FAVORITES} aracı seçin.</p>
-                    
-                    <div>
-                         <h4 className="font-bold text-adai-primary mb-2">Ana Araçlar</h4>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {adaiMenuStructure.main.map(tabId => renderToolCheckbox(tabId as Tab))}
-                         </div>
-                    </div>
-
-                    {adaiMenuStructure.accordions.map(accordion => (
-                        <div key={accordion.key}>
-                            <h4 className="font-bold text-adai-primary mb-2">{accordion.label}</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {accordion.tabs.map(tabId => renderToolCheckbox(tabId as Tab))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="p-4 bg-slate-100 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
-                    <button onClick={onClose} className="px-6 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold rounded-lg transition-colors">
-                        İptal
-                    </button>
-                    <button onClick={handleSave} className="px-6 py-2 bg-adai-primary hover:bg-adai-secondary text-white font-bold rounded-lg transition-colors">
-                        Kaydet ({tempFavorites.length}/{MAX_FAVORITES})
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-  };
-
-  const QuickAccessWidget = () => (
-    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 flex items-center gap-2 min-h-[80px]">
-        {favoriteTabs.length > 0 ? (
-            <>
-                <div className="flex flex-wrap items-center gap-2">
-                    {favoriteTabs.map(tabId => {
-                        const tab = allTabs[tabId];
-                        if (!tab) return null;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => onNavigate(tab.id)}
-                                title={tab.label} // Tooltip shows the name
-                                className="flex items-center justify-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group w-16 h-16"
-                            >
-                                <div className="text-4xl transition-transform transform group-hover:scale-110">{tab.icon}</div>
-                            </button>
-                        );
-                    })}
-                </div>
-                <button
-                    onClick={() => setIsFavoritesModalOpen(true)}
-                    title="Hızlı Erişimi Düzenle"
-                    className="p-3 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors ml-auto self-center"
-                >
-                    <EditIcon />
-                </button>
-            </>
-        ) : (
-            <div className="flex items-center justify-center text-center p-2 w-full">
-                <p className="text-slate-500 dark:text-slate-400 text-sm">Favori araçlarınızı buraya ekleyerek hızlıca erişin.</p>
-                <button
-                    onClick={() => setIsFavoritesModalOpen(true)}
-                    className="ml-4 bg-adai-primary hover:bg-adai-secondary text-white font-bold py-2 px-4 rounded-lg text-sm shadow-md"
-                >
-                    Favori Ekle
-                </button>
-            </div>
-        )}
-    </div>
-);
-
   const VocabularyWidget = () => (
     <Widget>
         <div className="flex items-center gap-3 mb-4">
@@ -601,9 +471,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   return (
       <div className="space-y-8">
-          <FavoritesModal isOpen={isFavoritesModalOpen} onClose={() => setIsFavoritesModalOpen(false)} />
           <WelcomeHeader />
-          <QuickAccessWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="lg:col-span-2">
                   <TimeAndWeatherWidget />
