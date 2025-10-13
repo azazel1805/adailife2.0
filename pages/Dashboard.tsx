@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useHistory } from '../context/HistoryContext';
 import { getPhrasalVerbOfTheDay, getWeatherForLocation } from '../services/geminiService';
@@ -18,7 +14,6 @@ import PrepositionVisualizerWidget from '../components/PrepositionVisualizerWidg
 import AffixOfTheDayWidget from '../components/AffixOfTheDayWidget';
 import useLocalStorage from '../hooks/useLocalStorage';
 
-
 // Helper hook to get the previous value of a state or prop
 const usePrevious = <T,>(value: T) => {
     const ref = useRef<T | undefined>(undefined);
@@ -27,7 +22,6 @@ const usePrevious = <T,>(value: T) => {
     });
     return ref.current;
 };
-
 
 interface AdaiMenuStructure {
     main: string[];
@@ -40,6 +34,7 @@ interface DashboardProps {
     allTabs: { [key in Tab]?: { id: Tab; label: string; icon: React.ReactNode; }; };
     adaiMenuStructure: AdaiMenuStructure;
 }
+
 
 const Widget: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
   <div className={`bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 h-full transition-all duration-300 hover:shadow-adai-primary/20 hover:-translate-y-1 ${className}`}>
@@ -426,9 +421,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
   const { challengeState } = useChallenge();
   const { vocabularyList } = useVocabulary();
   const { user } = useAuth();
-    const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
-  const [favoriteTabs, setFavoriteTabs] = useLocalStorage<Tab[]>(`favorite-tabs-${user}`, []);
 
+  const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
+  const [favoriteTabs, setFavoriteTabs] = useLocalStorage<Tab[]>(`favorite-tabs-${user}`, []);
 
   const unlockedAchievements = useMemo(() => {
     return allAchievements.filter(ach => ach.isUnlocked(history, vocabularyList, challengeState));
@@ -437,14 +432,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
   const WelcomeHeader = () => (
     <div className="flex justify-between items-center">
         <div>
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">
-  Hoşgeldin, {user?.displayName || user?.email?.split('@')[0]}!
-</h2>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Hoşgeldin, {user}!</h2>
             <p className="text-slate-500 dark:text-slate-400 mt-1">Bugün İngilizce yolculuğunda ne yapmak istersin?</p>
         </div>
     </div>
   );
-     const FavoritesModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen, onClose }) => {
+  
+  const FavoritesModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
     const MAX_FAVORITES = 8;
     const [tempFavorites, setTempFavorites] = useState(favoriteTabs);
@@ -598,10 +592,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Başarımlar ({unlockedAchievements.length}/{allAchievements.length})</h3>
         {unlockedAchievements.length > 0 ? (
             <div className="flex flex-wrap gap-4">
-            {unlockedAchievements.slice(0, 6).map(ach => (
-                <div key={ach.id} className="text-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg transform hover:scale-110 transition-transform duration-200 w-20" title={ach.description}>
-                <div className="text-4xl">{ach.icon}</div>
-                <p className="text-xs font-bold mt-1 h-8 flex items-center justify-center leading-tight text-slate-700 dark:text-slate-300">{ach.title}</p>
+            {unlockedAchievements.slice(0, 8).map(ach => (
+                <div key={ach.id} title={ach.description} className="flex flex-col items-center text-center w-24">
+                    <div className="relative w-20 h-20">
+                        <svg viewBox="0 0 100 100" className="w-full h-full">
+                            <path d="M50 2.5 L95.5 26.25 V73.75 L50 97.5 L4.5 73.75 V26.25 Z" className="fill-slate-200 dark:fill-slate-700" />
+                            <path d="M50 5 L93 27.5 V72.5 L50 95 L7 72.5 V27.5 Z" className="fill-none stroke-adai-primary stroke-2" />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center text-4xl">
+                            {ach.icon}
+                        </div>
+                    </div>
+                    <p className="text-xs font-bold mt-2 h-8 leading-tight text-slate-700 dark:text-slate-300">{ach.title}</p>
                 </div>
             ))}
             </div>
