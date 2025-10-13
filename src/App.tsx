@@ -51,12 +51,12 @@ import PhysicalDescriptionTool from '../pages/PhysicalDescriptionTool';
 
 // Components
 // --- ÖNEMLİ: Bu import yollarını kontrol edin. Eğer 'components' klasörü App.tsx ile aynı seviyedeyse './components' olmalı. ---
-import WelcomeTour from './components/WelcomeTour';
+import WelcomeTour from '../components/WelcomeTour';
 import { AnalyzeIcon, GamesIcon, DictionaryIcon, BasicsIcon, HandwritingConverterIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, PlacementTestIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon, OutlineIcon, PhysicalDescriptionIcon } from './components/icons/Icons';
 
 // Hooks & Types
 // --- ÖNEMLİ: Bu import yollarını kontrol edin. Eğer 'hooks' ve 'types' klasörleri App.tsx ile aynı seviyedeyse './hooks' ve './types' olmalı. ---
-import useLocalStorage from './hooks/useLocalStorage';
+import useLocalStorage from '../hooks/useLocalStorage';
 import { Tab, MockExamResultData } from './types';
 
 type Theme = 'light' | 'dark';
