@@ -421,12 +421,11 @@ const PhrasalVerbWidget: React.FC = () => {
 };
 
 
-const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStructure }) => {
   const { history } = useHistory();
   const { challengeState } = useChallenge();
   const { vocabularyList } = useVocabulary();
   const { user } = useAuth();
-
     const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
   const [favoriteTabs, setFavoriteTabs] = useLocalStorage<Tab[]>(`favorite-tabs-${user}`, []);
 
