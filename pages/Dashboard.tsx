@@ -1,3 +1,7 @@
+
+
+
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useHistory } from '../context/HistoryContext';
 import { getPhrasalVerbOfTheDay, getWeatherForLocation } from '../services/geminiService';
@@ -6,13 +10,12 @@ import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { useChallenge } from '../context/ChallengeContext';
 import { useVocabulary } from '../context/VocabularyContext';
-import { VocabularyIcon, TargetIcon, FireIcon, PhrasalVerbIcon, LocationIcon, PrepositionIcon, EditIcon } from '../components/icons/Icons';
+import { VocabularyIcon, TargetIcon, FireIcon, PhrasalVerbIcon, LocationIcon, PrepositionIcon } from '../components/icons/Icons';
 import { allAchievements } from '../achievements';
 import Confetti from '../components/Confetti';
 import { useAuth } from '../context/AuthContext';
 import PrepositionVisualizerWidget from '../components/PrepositionVisualizerWidget';
 import AffixOfTheDayWidget from '../components/AffixOfTheDayWidget';
-import useLocalStorage from '../hooks/useLocalStorage';
 
 // Helper hook to get the previous value of a state or prop
 const usePrevious = <T,>(value: T) => {
@@ -23,18 +26,10 @@ const usePrevious = <T,>(value: T) => {
     return ref.current;
 };
 
-interface AdaiMenuStructure {
-    main: string[];
-    accordions: { key: string; label: string; icon: React.ReactNode; tabs: string[]; }[];
-    bottom: string[];
-}
 
 interface DashboardProps {
     onNavigate: (tab: Tab) => void;
-    allTabs: { [key in Tab]?: { id: Tab; label: string; icon: React.ReactNode; }; };
-    adaiMenuStructure: AdaiMenuStructure;
 }
-
 
 const Widget: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
   <div className={`bg-white dark:bg-slate-900 p-6 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 h-full transition-all duration-300 hover:shadow-adai-primary/20 hover:-translate-y-1 ${className}`}>
@@ -416,14 +411,11 @@ const PhrasalVerbWidget: React.FC = () => {
 };
 
 
-const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStructure }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { history } = useHistory();
   const { challengeState } = useChallenge();
   const { vocabularyList } = useVocabulary();
   const { user } = useAuth();
-
-  const [isFavoritesModalOpen, setIsFavoritesModalOpen] = useState(false);
-  const [favoriteTabs, setFavoriteTabs] = useLocalStorage<Tab[]>(`favorite-tabs-${user}`, []);
 
   const unlockedAchievements = useMemo(() => {
     return allAchievements.filter(ach => ach.isUnlocked(history, vocabularyList, challengeState));
@@ -432,141 +424,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
   const WelcomeHeader = () => (
     <div className="flex justify-between items-center">
         <div>
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">Hoşgeldin, {user}!</h2>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">
+  Hoşgeldin, {user?.displayName || user?.email?.split('@')[0]}!
+</h2>
             <p className="text-slate-500 dark:text-slate-400 mt-1">Bugün İngilizce yolculuğunda ne yapmak istersin?</p>
         </div>
     </div>
   );
-  
-  const FavoritesModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen, onClose }) => {
-    if (!isOpen) return null;
-    const MAX_FAVORITES = 8;
-    const [tempFavorites, setTempFavorites] = useState(favoriteTabs);
-
-    const handleToggle = (tabId: Tab) => {
-        setTempFavorites(prev => {
-            if (prev.includes(tabId)) {
-                return prev.filter(t => t !== tabId);
-            } else {
-                if (prev.length >= MAX_FAVORITES) {
-                    // Silently fail or show a subtle message
-                    return prev;
-                }
-                return [...prev, tabId];
-            }
-        });
-    };
-
-    const handleSave = () => {
-        setFavoriteTabs(tempFavorites);
-        onClose();
-    };
-
-    const renderToolCheckbox = (tabId: Tab) => {
-        const tab = allTabs[tabId];
-        // Exclude some tabs from being favorited
-        if (!tab || ['dashboard', 'history', 'admin'].includes(tabId)) return null;
-
-        const isChecked = tempFavorites.includes(tabId);
-        const isDisabled = !isChecked && tempFavorites.length >= MAX_FAVORITES;
-        
-        return (
-            <label key={tab.id} className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${isChecked ? 'bg-adai-primary/20 border-adai-primary' : 'border-transparent bg-slate-100 dark:bg-slate-800'} ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                <input 
-                    type="checkbox" 
-                    checked={isChecked}
-                    disabled={isDisabled}
-                    onChange={() => handleToggle(tab.id)}
-                    className="w-5 h-5 rounded text-adai-primary focus:ring-adai-secondary dark:bg-slate-700 dark:border-slate-600"
-                />
-                <span className="text-2xl">{tab.icon}</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{tab.label}</span>
-            </label>
-        );
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl flex flex-col h-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Hızlı Erişimi Düzenle</h3>
-                    <button onClick={onClose} className="text-slate-500 dark:text-slate-400 text-2xl hover:text-slate-900 dark:hover:text-slate-50">&times;</button>
-                </div>
-
-                <div className="p-6 flex-grow overflow-y-auto space-y-6">
-                    <p className="text-slate-500 dark:text-slate-400">En sık kullandığınız {MAX_FAVORITES} aracı seçin.</p>
-                    
-                    <div>
-                         <h4 className="font-bold text-adai-primary mb-2">Ana Araçlar</h4>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {adaiMenuStructure.main.map(tabId => renderToolCheckbox(tabId as Tab))}
-                         </div>
-                    </div>
-
-                    {adaiMenuStructure.accordions.map(accordion => (
-                        <div key={accordion.key}>
-                            <h4 className="font-bold text-adai-primary mb-2">{accordion.label}</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {accordion.tabs.map(tabId => renderToolCheckbox(tabId as Tab))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="p-4 bg-slate-100 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
-                    <button onClick={onClose} className="px-6 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold rounded-lg transition-colors">
-                        İptal
-                    </button>
-                    <button onClick={handleSave} className="px-6 py-2 bg-adai-primary hover:bg-adai-secondary text-white font-bold rounded-lg transition-colors">
-                        Kaydet ({tempFavorites.length}/{MAX_FAVORITES})
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-  };
-
-  const QuickAccessWidget = () => (
-    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-800 flex items-center gap-2 min-h-[80px]">
-        {favoriteTabs.length > 0 ? (
-            <>
-                <div className="flex flex-wrap items-center gap-2">
-                    {favoriteTabs.map(tabId => {
-                        const tab = allTabs[tabId];
-                        if (!tab) return null;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => onNavigate(tab.id)}
-                                title={tab.label} // Tooltip shows the name
-                                className="flex items-center justify-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group w-16 h-16"
-                            >
-                                <div className="text-4xl transition-transform transform group-hover:scale-110">{tab.icon}</div>
-                            </button>
-                        );
-                    })}
-                </div>
-                <button
-                    onClick={() => setIsFavoritesModalOpen(true)}
-                    title="Hızlı Erişimi Düzenle"
-                    className="p-3 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors ml-auto self-center"
-                >
-                    <EditIcon />
-                </button>
-            </>
-        ) : (
-            <div className="flex items-center justify-center text-center p-2 w-full">
-                <p className="text-slate-500 dark:text-slate-400 text-sm">Favori araçlarınızı buraya ekleyerek hızlıca erişin.</p>
-                <button
-                    onClick={() => setIsFavoritesModalOpen(true)}
-                    className="ml-4 bg-adai-primary hover:bg-adai-secondary text-white font-bold py-2 px-4 rounded-lg text-sm shadow-md"
-                >
-                    Favori Ekle
-                </button>
-            </div>
-        )}
-    </div>
-);
 
   const VocabularyWidget = () => (
     <Widget>
@@ -592,18 +456,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">Başarımlar ({unlockedAchievements.length}/{allAchievements.length})</h3>
         {unlockedAchievements.length > 0 ? (
             <div className="flex flex-wrap gap-4">
-            {unlockedAchievements.slice(0, 8).map(ach => (
-                <div key={ach.id} title={ach.description} className="flex flex-col items-center text-center w-24">
-                    <div className="relative w-20 h-20">
-                        <svg viewBox="0 0 100 100" className="w-full h-full">
-                            <path d="M50 2.5 L95.5 26.25 V73.75 L50 97.5 L4.5 73.75 V26.25 Z" className="fill-slate-200 dark:fill-slate-700" />
-                            <path d="M50 5 L93 27.5 V72.5 L50 95 L7 72.5 V27.5 Z" className="fill-none stroke-adai-primary stroke-2" />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center text-4xl">
-                            {ach.icon}
-                        </div>
-                    </div>
-                    <p className="text-xs font-bold mt-2 h-8 leading-tight text-slate-700 dark:text-slate-300">{ach.title}</p>
+            {unlockedAchievements.slice(0, 6).map(ach => (
+                <div key={ach.id} className="text-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg transform hover:scale-110 transition-transform duration-200 w-20" title={ach.description}>
+                <div className="text-4xl">{ach.icon}</div>
+                <p className="text-xs font-bold mt-1 h-8 flex items-center justify-center leading-tight text-slate-700 dark:text-slate-300">{ach.title}</p>
                 </div>
             ))}
             </div>
@@ -615,9 +471,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
 
   return (
       <div className="space-y-8">
-          <FavoritesModal isOpen={isFavoritesModalOpen} onClose={() => setIsFavoritesModalOpen(false)} />
           <WelcomeHeader />
-          <QuickAccessWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="lg:col-span-2">
                   <TimeAndWeatherWidget />
