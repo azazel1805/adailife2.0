@@ -23,6 +23,13 @@ const usePrevious = <T,>(value: T) => {
     return ref.current;
 };
 
+// Define a default structure for adaiMenuStructure
+const defaultAdaiMenuStructure: AdaiMenuStructure = {
+    main: [],
+    accordions: [],
+    bottom: []
+};
+
 interface AdaiMenuStructure {
     main: string[];
     accordions: { key: string; label: string; icon: React.ReactNode; tabs: string[]; }[];
@@ -32,7 +39,8 @@ interface AdaiMenuStructure {
 interface DashboardProps {
     onNavigate: (tab: Tab) => void;
     allTabs: { [key in Tab]?: { id: Tab; label: string; icon: React.ReactNode; }; };
-    adaiMenuStructure: AdaiMenuStructure;
+    // Make adaiMenuStructure optional and provide a default value
+    adaiMenuStructure?: AdaiMenuStructure;
 }
 
 
@@ -416,7 +424,7 @@ const PhrasalVerbWidget: React.FC = () => {
 };
 
 
-const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStructure }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStructure = defaultAdaiMenuStructure }) => { // Use default value here
   const { history } = useHistory();
   const { challengeState } = useChallenge();
   const { vocabularyList } = useVocabulary();
@@ -501,6 +509,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
                     <div>
                          <h4 className="font-bold text-adai-primary mb-2">Ana Araçlar</h4>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {/* Now adaiMenuStructure.main is safe to access due to the default value */}
                             {adaiMenuStructure.main.map(tabId => renderToolCheckbox(tabId as Tab))}
                          </div>
                     </div>
