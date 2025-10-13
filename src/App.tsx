@@ -3,7 +3,8 @@ import React, { useState, ReactNode, useEffect } from 'react';
 // Contexts
 import { useAuth } from '../context/AuthContext';
 import { HistoryProvider } from '../context/HistoryContext';
-import { usePdfExam } from '../context/PdfExamContext'; // Not: Bu import yolunu kontrol et. '/context' yerine './context' olabilir.
+// --- ÖNEMLİ: Bu import yolunu kontrol edin. Eğer 'context' klasörü App.tsx ile aynı seviyedeyse './context' olmalı. ---
+import { usePdfExam } from '../context/PdfExamContext'; 
 
 // Pages
 import Dashboard from '../pages/Dashboard';
@@ -48,22 +49,15 @@ import Basics from '../pages/Basics';
 import HandwritingConverter from '../pages/HandwritingConverter';
 import PhysicalDescriptionTool from '../pages/PhysicalDescriptionTool';
 
-
-
-
-
-
-
-
-
-
 // Components
-import WelcomeTour from '/components/WelcomeTour';
-import { AnalyzeIcon, GamesIcon, DictionaryIcon, BasicsIcon, HandwritingConverterIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, PlacementTestIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon, OutlineIcon, PhysicalDescriptionIcon } from '/components/icons/Icons';
+// --- ÖNEMLİ: Bu import yollarını kontrol edin. Eğer 'components' klasörü App.tsx ile aynı seviyedeyse './components' olmalı. ---
+import WelcomeTour from './components/WelcomeTour';
+import { AnalyzeIcon, GamesIcon, DictionaryIcon, BasicsIcon, HandwritingConverterIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, PlacementTestIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon, OutlineIcon, PhysicalDescriptionIcon } from './components/icons/Icons';
 
 // Hooks & Types
-import useLocalStorage from '/hooks/useLocalStorage';
-import { Tab, MockExamResultData } from '/types';
+// --- ÖNEMLİ: Bu import yollarını kontrol edin. Eğer 'hooks' ve 'types' klasörleri App.tsx ile aynı seviyedeyse './hooks' ve './types' olmalı. ---
+import useLocalStorage from './hooks/useLocalStorage';
+import { Tab, MockExamResultData } from './types';
 
 type Theme = 'light' | 'dark';
 
@@ -167,20 +161,23 @@ const App: React.FC = () => {
         'physical_description': { id: 'physical_description', label: 'Fiziksel Betimleme', icon: <PhysicalDescriptionIcon /> },
         'admin': { id: 'admin', label: 'Admin Panel', icon: <AdminIcon /> },
         'handwriting_converter': { id: 'handwriting_converter', label: 'El Yazısı Dönüştürücü', icon: <HandwritingConverterIcon /> },
-
     };
 
+    // --- DÜZELTİLMİŞ adaiMenuStructure TANIMI ---
+    // Bu yapı, Dashboard'a prop olarak geçilecek.
     const adaiMenuStructure = {
-    main: ['dashboard', 'skill_tree', 'planner', 'placement_test', 'tutor'],
-    accordions: [
-      { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'basics', 'physical_description', 'handwriting_converter', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'essay_outliner', 'listening', 'speaking_simulator'] },
-      { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint', 'concept_weaver'] },
-      { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
-      { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
-      { key: 'focused_analysis', label: "Odaklı Analiz", icon: <ExamIcon />, tabs: ['analyzer', 'reading', 'cohesion_analyzer', 'sentence_ordering', 'dialogue_completion', 'pdf_importer'] },
-    ],
-    bottom: ['history', 'admin']
-  };
+        // 'dashboard' ve 'history' gibi sekmelerin hem ana menüde hem de alt menüde olması istenmiyorsa,
+        // buradaki listeyi kontrol edin. Şu anki haliyle Dashboard'daki filtreleme mantığına uygun.
+        main: ['dashboard', 'skill_tree', 'planner', 'placement_test', 'tutor'], 
+        accordions: [
+          { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'basics', 'physical_description', 'handwriting_converter', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'essay_outliner', 'listening', 'speaking_simulator'] },
+          { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint', 'concept_weaver'] },
+          { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
+          { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
+          { key: 'focused_analysis', label: "Odaklı Analiz", icon: <ExamIcon />, tabs: ['analyzer', 'reading', 'cohesion_analyzer', 'sentence_ordering', 'dialogue_completion', 'pdf_importer'] },
+        ],
+        bottom: ['history', 'admin']
+      };
 
     const NavButton: React.FC<{ tab: Tab; label: string; icon: ReactNode }> = ({ tab, label, icon }) => (
         <button onClick={() => handleTabClick(tab)} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === tab ? 'bg-adai-primary text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-adai-primary'}`}>
@@ -242,7 +239,7 @@ const App: React.FC = () => {
 
                 {structure.bottom.map(tabId => {
                     // Kendi admin e-postanızı buraya yazın
-                    if (tabId === 'admin' && user?.email !== 'admin@example.com') return null;
+                    if (tabId === 'admin' && user?.email !== 'admin@example.com') return null; // Admin kontrolü
                     const tab = allTabs[tabId as Tab];
                     return tab ? <NavButton key={tab.id} tab={tab.id} label={tab.label} icon={tab.icon} /> : null;
                 })}
@@ -262,7 +259,7 @@ const App: React.FC = () => {
                     Çıkış Yap
                 </button>
             </div>
-        </div> // <-- Bütün içeriği saran tek bir ana div
+        </div> 
     );
 };
 
@@ -275,7 +272,7 @@ const App: React.FC = () => {
     
     const renderContent = (): ReactNode => {
         switch (activeTab) {
-            case 'dashboard': return <Dashboard onNavigate={handleTabClick} />;
+            case 'dashboard': return <Dashboard onNavigate={handleTabClick} allTabs={allTabs} adaiMenuStructure={adaiMenuStructure} />;
             case 'skill_tree': return <SkillTree />;
             case 'planner': return <StudyPlanner onNavigate={handleTabClick} />;
             case 'placement_test':  return <PlacementTest />;
@@ -304,7 +301,6 @@ const App: React.FC = () => {
             case 'vocabulary': return <VocabularyTrainer />;
             case 'vocabulary_story_weaver': return <VocabularyStoryWeaver />;
             case 'phrasal_verb_deconstructor': return <PhrasalVerbDeconstructor />;
-            case 'basics': return <Basics />;
             case 'tenses': return <Tenses />;
             case 'crossword': return <Crossword />;
             case 'grammar_gaps': return <GrammarGaps />;
@@ -314,8 +310,8 @@ const App: React.FC = () => {
             case 'grammar_library': return <GrammarLibrary onAskTutor={handleAskTutor} />;
             case 'history': return <History />;
             case 'physical_description': return <PhysicalDescriptionTool />;
-            case 'admin': return user?.email === 'admin@example.com' ? <AdminPage /> : <Dashboard onNavigate={handleTabClick} />;
-            default: return <Dashboard onNavigate={handleTabClick} />;
+            case 'admin': return user?.email === 'admin@example.com' ? <AdminPage /> : <Dashboard onNavigate={handleTabClick} allTabs={allTabs} adaiMenuStructure={adaiMenuStructure} />;
+            default: return <Dashboard onNavigate={handleTabClick} allTabs={allTabs} adaiMenuStructure={adaiMenuStructure} />;
         }
     };
 
