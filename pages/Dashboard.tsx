@@ -474,8 +474,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
 
     const renderToolCheckbox = (tabId: Tab) => {
         const tab = allTabs[tabId];
-        // Exclude some tabs from being favorited
-        if (!tab || ['dashboard', 'history', 'admin'].includes(tabId)) return null;
+        // --- DÜZELTİLMİŞ FİLTRELEME MANTIĞI ---
+        // `main` bölümündeki araçlar için 'dashboard', 'history', 'admin' sekmelerine izin veriyoruz.
+        // Diğer bölümlerdeki bu sekmeleri ise hariç tutuyoruz.
+        const isMainSection = adaiMenuStructure?.main?.includes(tabId);
+        const isExcludedTab = ['dashboard', 'history', 'admin'].includes(tabId);
+
+        if (!tab) return null; // Sekme yoksa gösterme
+
+        // Eğer bu sekme ana bölümdeyse ve hariç tutulanlardan biri DEĞİLSE göster
+        // VEYA eğer bu sekme ana bölümde DEĞİLSE VE hariç tutulanlardan biriyse gösterme
+        if (isMainSection && isExcludedTab) {
+            // Ana bölümdeyiz ve hariç tutulanlardan biri, gösterilebilir (örn. dashboard)
+        } else if (!isMainSection && isExcludedTab) {
+            return null; // Ana bölümde değil ve hariç tutulanlardan biri, gösterme
+        }
+        // Diğer tüm durumlar (ana bölümde olmayanlar, ana bölümde olup hariç tutulmayanlar) gösterilir.
+        // --- FİLTRE SONU ---
 
         const isChecked = tempFavorites.includes(tabId);
         const isDisabled = !isChecked && tempFavorites.length >= MAX_FAVORITES;
@@ -509,7 +524,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
                     <div>
                          <h4 className="font-bold text-adai-primary mb-2">Ana Araçlar</h4>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {/* Now adaiMenuStructure.main is safe to access due to the default value */}
+                            {/* Default value ensures adaiMenuStructure.main is always available */}
                             {adaiMenuStructure.main.map(tabId => renderToolCheckbox(tabId as Tab))}
                          </div>
                     </div>
