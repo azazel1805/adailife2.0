@@ -965,7 +965,7 @@ async function* streamToAsyncIterator(stream: AsyncGenerator<GenerateContentResp
 export const analyzeQuestion = async (question: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: 'gemini-2.5-pro',
             contents: question,
             config: {
                 responseMimeType: 'application/json',
