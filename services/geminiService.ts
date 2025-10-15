@@ -1,6 +1,6 @@
 
 
-import { GoogleGenAI, GenerateContentResponse, Chat, Type } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Chat, Type, Modality } from "@google/genai";
 import { 
     HistoryItem, AnalysisResult, NewsResult, MockExamQuestion, ClozeTestResponse, PhrasalVerbOfTheDay, 
     FullStudyPlan, VocabularyItem, TranslationAnalysisResult, DialogueCompletionExercise, 
