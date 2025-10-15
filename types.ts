@@ -1,7 +1,7 @@
 
 
 
-export type Tab = 'dashboard' | 'planner' | 'analyzer' | 'tutor' | 'reading' | 'deconstruction' | 'diagrammer' | 'cohesion_analyzer' | 'writing' | 'listening' | 'news' | 'dictionary' | 'vocabulary' | 'history' | 'pdf_importer' | 'vocabulary_story_weaver' | 'skill_tree' | 'sentence_ordering' | 'speaking_simulator' | 'phrasal_verb_deconstructor' | 'admin' | 'translation_analyst' | 'dialogue_completion' | 'visual_reading' | 'creative_writing' | 'pragmatic_analyzer' | 'visual_dictionary' | 'grammar_library' | 'basics' | 'tenses' | 'crossword' | 'grammar_gaps' | 'hangman' | 'placement_test' | 'essay_outliner' | 'basics' | 'handwriting_converter' | 'physical_description';
+export type Tab = 'dashboard' | 'planner' | 'analyzer' | 'tutor' | 'reading' | 'deconstruction' | 'diagrammer' | 'cohesion_analyzer' | 'writing' | 'listening' | 'news' | 'dictionary' | 'vocabulary' | 'history' | 'pdf_importer' | 'vocabulary_story_weaver' | 'skill_tree' | 'sentence_ordering' | 'speaking_simulator' | 'phrasal_verb_deconstructor' | 'admin' | 'translation_analyst' | 'dialogue_completion' | 'visual_reading' | 'creative_writing' | 'pragmatic_analyzer' | 'visual_dictionary' | 'grammar_library' | 'basics' | 'tenses' | 'crossword' | 'grammar_gaps' | 'hangman' | 'placement_test' | 'essay_outliner' | 'basics' | 'handwriting_converter' | 'physical_description' | 'podcast_maker';
 
 
 export interface AnalysisResult {
