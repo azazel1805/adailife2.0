@@ -172,6 +172,13 @@ const PodcastMaker: React.FC = () => {
                     <audio controls src={audioUrl} className="w-full">
                         Tarayıcınız ses elementini desteklemiyor.
                     </audio>
+                    <a
+                        href={audioUrl}
+                        download="adai-podcast.wav"
+                        className="mt-4 w-full block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                    >
+                        Podcast'i İndir (.wav)
+                    </a>
                 </div>
             )}
         </div>
