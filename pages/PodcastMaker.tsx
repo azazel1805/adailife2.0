@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { generatePodcastAudio } from '../services/geminiService';
+import React, { useState, useRef, useEffect } from 'react';
+import { generatePodcastAudio, listTTSVoices } from '../services/geminiService';
+import { TTSVoice } from '../types';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { PodcastIcon } from '../components/icons/Icons';
@@ -98,6 +99,34 @@ const PodcastMaker: React.FC = () => {
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
 
+    // New state for voice selection
+    const [voices, setVoices] = useState<TTSVoice[]>([]);
+    const [selectedVoice, setSelectedVoice] = useState<string>('Kore'); // A good default
+    const [isLoadingVoices, setIsLoadingVoices] = useState<boolean>(true);
+    
+    // Fetch voices on component mount
+    useEffect(() => {
+        const fetchVoices = async () => {
+            setIsLoadingVoices(true);
+            try {
+                const availableVoices = await listTTSVoices();
+                setVoices(availableVoices);
+                if (availableVoices.length > 0 && !availableVoices.some(v => v.name === 'Kore')) {
+                    // If 'Kore' is not in the list, set a different default
+                    setSelectedVoice(availableVoices[0].name);
+                }
+            } catch (e: any) {
+                console.error("Failed to load voices:", e.message);
+                // Don't block the user, they can still use the default 'Kore'
+                setError("Could not load voice list, using default voice.");
+            } finally {
+                setIsLoadingVoices(false);
+            }
+        };
+
+        fetchVoices();
+    }, []);
+
     const handleGenerate = async () => {
         if (!script.trim()) {
             setError('Please enter a script for your podcast.');
@@ -112,7 +141,7 @@ const PodcastMaker: React.FC = () => {
         }
         
         try {
-            const base64Audio = await generatePodcastAudio(script);
+            const base64Audio = await generatePodcastAudio(script, selectedVoice);
 
             if (!audioContextRef.current) {
                 audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
@@ -153,6 +182,29 @@ const PodcastMaker: React.FC = () => {
                     disabled={isLoading}
                 />
                 
+                <div className="mt-4">
+                    <label htmlFor="voice-select" className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+                        Ses Seçimi
+                    </label>
+                    <select
+                        id="voice-select"
+                        value={selectedVoice}
+                        onChange={(e) => setSelectedVoice(e.target.value)}
+                        disabled={isLoadingVoices || isLoading}
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-adai-primary focus:outline-none text-slate-800 dark:text-slate-200 disabled:opacity-50 transition-colors"
+                    >
+                        {isLoadingVoices ? (
+                            <option>Sesler yükleniyor...</option>
+                        ) : voices.length > 0 ? (
+                            voices.map(voice => (
+                                <option key={voice.name} value={voice.name}>{voice.name}</option>
+                            ))
+                        ) : (
+                            <option value="Kore">Kore (Default)</option>
+                        )}
+                    </select>
+                </div>
+
                 <ErrorMessage message={error} />
                 
                 <button
