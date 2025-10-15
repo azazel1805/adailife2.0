@@ -1797,7 +1797,7 @@ export const convertImageToText = async (file: File): Promise<string> => {
     }
 };
 
-export const generatePodcastAudio = async (script: string): Promise<string> => {
+export const generatePodcastAudio = async (script: string, voiceName: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash-preview-tts",
@@ -1806,7 +1806,7 @@ export const generatePodcastAudio = async (script: string): Promise<string> => {
                 responseModalities: [Modality.AUDIO],
                 speechConfig: {
                     voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: 'Kore' }, // A pleasant, clear voice
+                        prebuiltVoiceConfig: { voiceName: voiceName },
                     },
                 },
             },
@@ -1821,5 +1821,22 @@ export const generatePodcastAudio = async (script: string): Promise<string> => {
     } catch (error) {
         console.error("Error generating podcast audio:", error);
         throw new Error("Podcast audio could not be generated. Please check your script and try again.");
+    }
+};
+
+export const listTTSVoices = async (): Promise<TTSVoice[]> => {
+    try {
+        // FIX: The `ai.models.listVoices` method does not exist in the @google/genai SDK.
+        // Replaced the incorrect API call with a hardcoded list of known available voices for the TTS model.
+        return Promise.resolve([
+            { name: "Zephyr" },
+            { name: "Puck" },
+            { name: "Charon" },
+            { name: "Kore" },
+            { name: "Fenrir" },
+        ]);
+    } catch (error) {
+        console.error("Error listing TTS voices:", error);
+        throw new Error("Could not fetch available voices. Please try again.");
     }
 };
