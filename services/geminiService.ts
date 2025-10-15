@@ -9,7 +9,7 @@ import {
     PhrasalVerbDeconstructionResult, WeatherData, VisualDescriptionAnalysis, DictionaryEntry,
     Scenario, SimulatorChatMessage, PragmaticAnalysisResult, PerformanceStats, IdentifiedObject, AffixData, CrosswordData, ConceptWeaverAnalysis, GrammarTopicDetails,
     GrammarSentenceFeedback, PlacementTestContent,
-    PlacementTestReport, TrToEnResult
+    PlacementTestReport, TrToEnResult, TTSVoice
 } from '../types';
 import { parseGeneratedQuestions, parseClozeTestJsonResponse } from "../utils/questionParser";
 
