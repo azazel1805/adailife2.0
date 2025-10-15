@@ -1796,3 +1796,30 @@ export const convertImageToText = async (file: File): Promise<string> => {
         throw new Error("Görsel metne dönüştürülürken bir hata oluştu. Lütfen görselin net olduğundan emin olun.");
     }
 };
+
+export const generatePodcastAudio = async (script: string): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash-preview-tts",
+            contents: [{ parts: [{ text: script }] }],
+            config: {
+                responseModalities: [Modality.AUDIO],
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: { voiceName: 'Kore' }, // A pleasant, clear voice
+                    },
+                },
+            },
+        });
+        
+        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (!base64Audio) {
+            throw new Error("No audio data received from API. The script might be too short or contain unsupported characters.");
+        }
+        return base64Audio;
+
+    } catch (error) {
+        console.error("Error generating podcast audio:", error);
+        throw new Error("Podcast audio could not be generated. Please check your script and try again.");
+    }
+};
