@@ -583,3 +583,7 @@ export interface PlacementTestReport {
   detailedFeedback: string;
   skillReports: SkillReport[];
 }
+// Type for Text-to-Speech voices
+export interface TTSVoice {
+    name: string;
+}
