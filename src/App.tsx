@@ -48,11 +48,13 @@ import EssayOutliner from '../pages/EssayOutliner';
 import Basics from '../pages/Basics';
 import HandwritingConverter from '../pages/HandwritingConverter';
 import PhysicalDescriptionTool from '../pages/PhysicalDescriptionTool';
+import PodcastMaker from '../pages/PodcastMaker';
+
 
 // Components
 // --- ÖNEMLİ: Bu import yollarını kontrol edin. Eğer 'components' klasörü App.tsx ile aynı seviyedeyse './components' olmalı. ---
 import WelcomeTour from '../components/WelcomeTour';
-import { AnalyzeIcon, GamesIcon, DictionaryIcon, BasicsIcon, HandwritingConverterIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, PlacementTestIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon, OutlineIcon, PhysicalDescriptionIcon } from '../components/icons/Icons';
+import { AnalyzeIcon, GamesIcon, DictionaryIcon, BasicsIcon, HandwritingConverterIcon, GrammarLibraryIcon, HistoryIcon, DashboardIcon, PlacementTestIcon, LogoutIcon, TutorIcon, ReadingIcon, WritingIcon, VocabularyIcon, ListeningIcon, MenuIcon, DeconstructIcon, NewsIcon, ExamIcon, PracticeToolsIcon, CohesionIcon, DiagramIcon, PlannerIcon, PDFImporterIcon, StoryIcon, SkillTreeIcon, OrderingIcon, SpeakingSimulatorIcon, PhrasalVerbDeconstructorIcon, AdminIcon, TranslationIcon, DialogueIcon, VisualReadingIcon, CreativeWritingIcon, PragmaticIcon, VisualDictionaryIcon, TensesIcon, CrosswordIcon, GrammarGapsIcon, HangmanIcon, WordSprintIcon, ConceptWeaverIcon, OutlineIcon, PhysicalDescriptionIcon, PodcastIcon } from '../components/icons/Icons';
 
 // Hooks & Types
 // --- ÖNEMLİ: Bu import yollarını kontrol edin. Eğer 'hooks' ve 'types' klasörleri App.tsx ile aynı seviyedeyse './hooks' ve './types' olmalı. ---
@@ -161,6 +163,8 @@ const App: React.FC = () => {
         'physical_description': { id: 'physical_description', label: 'Fiziksel Betimleme', icon: <PhysicalDescriptionIcon /> },
         'admin': { id: 'admin', label: 'Admin Panel', icon: <AdminIcon /> },
         'handwriting_converter': { id: 'handwriting_converter', label: 'El Yazısı Dönüştürücü', icon: <HandwritingConverterIcon /> },
+        'podcast_maker': { id: 'podcast_maker', label: 'Podcast Oluşturucu', icon: <PodcastIcon /> },
+
     };
 
     // --- DÜZELTİLMİŞ adaiMenuStructure TANIMI ---
@@ -170,7 +174,7 @@ const App: React.FC = () => {
         // buradaki listeyi kontrol edin. Şu anki haliyle Dashboard'daki filtreleme mantığına uygun.
         main: ['dashboard', 'skill_tree', 'planner', 'placement_test', 'tutor'], 
         accordions: [
-          { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'basics', 'physical_description', 'handwriting_converter', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'essay_outliner', 'listening', 'speaking_simulator'] },
+          { key: 'practice', label: "Pratik Araçları", icon: <PracticeToolsIcon />, tabs: ['grammar_library', 'basics', 'physical_description', 'handwriting_converter', 'tenses', 'visual_reading', 'writing', 'creative_writing', 'essay_outliner', 'listening', 'speaking_simulator', 'podcast_maker'] },
           { key: 'games', label: "Oyunlar", icon: <GamesIcon />, tabs: ['crossword', 'grammar_gaps', 'hangman', 'word_sprint', 'concept_weaver'] },
           { key: 'vocab', label: "Kelime ve Okuma", icon: <DictionaryIcon />, tabs: ['dictionary', 'visual_dictionary', 'vocabulary', 'vocabulary_story_weaver', 'phrasal_verb_deconstructor', 'news'] },
           { key: 'analysis', label: "Dil Analizi", icon: <DeconstructIcon />, tabs: ['deconstruction', 'diagrammer', 'translation_analyst', 'pragmatic_analyzer'] },
@@ -310,6 +314,7 @@ const App: React.FC = () => {
             case 'grammar_library': return <GrammarLibrary onAskTutor={handleAskTutor} />;
             case 'history': return <History />;
             case 'physical_description': return <PhysicalDescriptionTool />;
+            case 'podcast_maker': return <PodcastMaker />;
             case 'admin': return user?.email === 'admin@example.com' ? <AdminPage /> : <Dashboard onNavigate={handleTabClick} allTabs={allTabs} adaiMenuStructure={adaiMenuStructure} />;
             default: return <Dashboard onNavigate={handleTabClick} allTabs={allTabs} adaiMenuStructure={adaiMenuStructure} />;
         }
