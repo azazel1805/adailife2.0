@@ -103,6 +103,10 @@ const PodcastMaker: React.FC = () => {
     const [voices, setVoices] = useState<TTSVoice[]>([]);
     const [selectedVoice, setSelectedVoice] = useState<string>('Kore'); // A good default
     const [isLoadingVoices, setIsLoadingVoices] = useState<boolean>(true);
+
+    // State for rate and pitch
+    const [rate, setRate] = useState<number>(1.0);
+    const [pitch, setPitch] = useState<number>(0.0);
     
     // Fetch voices on component mount
     useEffect(() => {
@@ -141,7 +145,7 @@ const PodcastMaker: React.FC = () => {
         }
         
         try {
-            const base64Audio = await generatePodcastAudio(script, selectedVoice);
+            const base64Audio = await generatePodcastAudio(script, selectedVoice, rate, pitch);
 
             if (!audioContextRef.current) {
                 audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
@@ -182,27 +186,80 @@ const PodcastMaker: React.FC = () => {
                     disabled={isLoading}
                 />
                 
-                <div className="mt-4">
-                    <label htmlFor="voice-select" className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
-                        Ses Seçimi
-                    </label>
-                    <select
-                        id="voice-select"
-                        value={selectedVoice}
-                        onChange={(e) => setSelectedVoice(e.target.value)}
-                        disabled={isLoadingVoices || isLoading}
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-adai-primary focus:outline-none text-slate-800 dark:text-slate-200 disabled:opacity-50 transition-colors"
-                    >
-                        {isLoadingVoices ? (
-                            <option>Sesler yükleniyor...</option>
-                        ) : voices.length > 0 ? (
-                            voices.map(voice => (
-                                <option key={voice.name} value={voice.name}>{voice.name}</option>
-                            ))
-                        ) : (
-                            <option value="Kore">Kore (Default)</option>
-                        )}
-                    </select>
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                    {/* Voice Selection */}
+                    <div className="sm:col-span-2">
+                        <label htmlFor="voice-select" className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+                            Ses Seçimi
+                        </label>
+                        <select
+                            id="voice-select"
+                            value={selectedVoice}
+                            onChange={(e) => setSelectedVoice(e.target.value)}
+                            disabled={isLoadingVoices || isLoading}
+                            className="w-full p-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-adai-primary focus:outline-none text-slate-800 dark:text-slate-200 disabled:opacity-50 transition-colors"
+                        >
+                            {isLoadingVoices ? (
+                                <option>Sesler yükleniyor...</option>
+                            ) : voices.length > 0 ? (
+                                voices.map(voice => (
+                                    <option key={voice.name} value={voice.name}>{voice.name}</option>
+                                ))
+                            ) : (
+                                <option value="Kore">Kore (Default)</option>
+                            )}
+                        </select>
+                    </div>
+
+                    {/* Speed Control */}
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label htmlFor="rate-slider" className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+                                Okuma Hızı
+                            </label>
+                            <span className="text-sm font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-md">{rate.toFixed(2)}x</span>
+                        </div>
+                        <input
+                            id="rate-slider"
+                            type="range"
+                            min="0.25"
+                            max="4.0"
+                            step="0.05"
+                            value={rate}
+                            onChange={(e) => setRate(parseFloat(e.target.value))}
+                            disabled={isLoading}
+                            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-adai-primary"
+                        />
+                         <div className="flex justify-between text-xs text-slate-400 mt-1">
+                            <span>Yavaş</span>
+                            <span>Hızlı</span>
+                        </div>
+                    </div>
+
+                    {/* Pitch Control */}
+                    <div>
+                         <div className="flex justify-between items-center mb-1">
+                            <label htmlFor="pitch-slider" className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+                                Ses Tonu
+                            </label>
+                            <span className="text-sm font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-md">{pitch.toFixed(1)}</span>
+                        </div>
+                        <input
+                            id="pitch-slider"
+                            type="range"
+                            min="-20.0"
+                            max="20.0"
+                            step="0.5"
+                            value={pitch}
+                            onChange={(e) => setPitch(parseFloat(e.target.value))}
+                            disabled={isLoading}
+                            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-adai-primary"
+                        />
+                        <div className="flex justify-between text-xs text-slate-400 mt-1">
+                            <span>Kalın</span>
+                            <span>İnce</span>
+                        </div>
+                    </div>
                 </div>
 
                 <ErrorMessage message={error} />
@@ -210,7 +267,7 @@ const PodcastMaker: React.FC = () => {
                 <button
                     onClick={handleGenerate}
                     disabled={isLoading || !script.trim()}
-                    className="mt-4 w-full bg-adai-primary text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 disabled:bg-slate-400 flex items-center justify-center shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                    className="mt-6 w-full bg-adai-primary text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 disabled:bg-slate-400 flex items-center justify-center shadow-md hover:shadow-lg hover:-translate-y-0.5"
                 >
                     {isLoading ? 'Podcast Oluşturuluyor...' : 'Podcast Oluştur'}
                 </button>
