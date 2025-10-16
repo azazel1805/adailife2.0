@@ -1797,7 +1797,7 @@ export const convertImageToText = async (file: File): Promise<string> => {
     }
 };
 
-export const generatePodcastAudio = async (script: string, voiceName: string): Promise<string> => {
+export const generatePodcastAudio = async (script: string, voiceName: string, rate: number, pitch: number): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash-preview-tts",
@@ -1808,6 +1808,9 @@ export const generatePodcastAudio = async (script: string, voiceName: string): P
                     voiceConfig: {
                         prebuiltVoiceConfig: { voiceName: voiceName },
                     },
+                    // FIX: The correct property names for speech rate and pitch are `speakingRate` and `pitch`.
+                    speakingRate: rate,
+                    pitch: pitch,
                 },
             },
         });
