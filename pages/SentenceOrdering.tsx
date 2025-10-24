@@ -5,6 +5,7 @@ import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { DIFFICULTY_LEVELS } from '../constants';
 import { useChallenge } from '../context/ChallengeContext';
+import { useExamHistory } from '../context/ExamHistoryContext';
 
 type DraggableSentence = {
     id: number; // Original index
@@ -19,6 +20,7 @@ const SentenceOrdering: React.FC = () => {
     const [userOrderedSentences, setUserOrderedSentences] = useState<DraggableSentence[]>([]);
     const [showResults, setShowResults] = useState(false);
     const { trackAction } = useChallenge();
+    const { trackSingleQuestionResult } = useExamHistory();
 
     const draggedItemIndex = useRef<number | null>(null);
     const dropTargetIndex = useRef<number | null>(null);
@@ -65,25 +67,49 @@ const SentenceOrdering: React.FC = () => {
         draggedItemIndex.current = null;
         dropTargetIndex.current = null;
     };
+
+    const handleMoveSentence = (index: number, direction: 'up' | 'down') => {
+        if (direction === 'up' && index === 0) return;
+        if (direction === 'down' && index === userOrderedSentences.length - 1) return;
+    
+        const newOrder = [...userOrderedSentences];
+        const itemToMove = newOrder[index];
+        
+        if (direction === 'up') {
+            newOrder.splice(index, 1);
+            newOrder.splice(index - 1, 0, itemToMove);
+        } else { // 'down'
+            newOrder.splice(index, 1);
+            newOrder.splice(index + 1, 0, itemToMove);
+        }
+    
+        setUserOrderedSentences(newOrder);
+    };
     
     const handleCheckAnswers = () => {
+        if (!exercise) return;
         setShowResults(true);
+
+        const userOrderIds = userOrderedSentences.map(s => s.id);
+        const correctOrderIds = exercise.analysis.correctOrderIndices;
+        const isCorrect = JSON.stringify(userOrderIds) === JSON.stringify(correctOrderIds);
+        trackSingleQuestionResult('Cümle Sıralama', isCorrect);
     };
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
-                <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-200">Cümle Sıralama Alıştırması</h2>
-                <p className="mb-4 text-slate-500 dark:text-slate-400">
-                    Karışık olarak verilen cümleleri sürükleyip bırakarak anlamlı bir paragraf oluşturun. Bu alıştırma, metin akışı ve anlamsal bütünlük kurma becerinizi geliştirir.
+            <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
+                <h2 className="text-2xl font-bold mb-2 text-text-primary">Cümle Sıralama Alıştırması</h2>
+                <p className="mb-4 text-text-secondary">
+                    Karışık olarak verilen cümleleri sürükleyip bırakarak veya ok tuşlarını kullanarak anlamlı bir paragraf oluşturun. Bu alıştırma, metin akışı ve anlamsal bütünlük kurma becerinizi geliştirir.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 items-center">
                     <div className="flex-1 w-full">
-                        <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Zorluk Seviyesi</label>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">Zorluk Seviyesi</label>
                         <select
                             value={difficulty}
                             onChange={(e) => setDifficulty(e.target.value)}
-                            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-brand-primary focus:outline-none text-slate-900 dark:text-slate-200"
+                            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-brand-primary focus:outline-none text-text-primary"
                             disabled={isLoading}
                         >
                             {DIFFICULTY_LEVELS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -103,9 +129,9 @@ const SentenceOrdering: React.FC = () => {
             <ErrorMessage message={error} />
             
             {exercise && (
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
+                <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
                     <h3 className="text-xl font-bold text-brand-primary mb-4">Paragrafı Oluştur</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Cümleleri doğru sıraya sürükleyin.</p>
+                    <p className="text-sm text-text-secondary mb-4">Cümleleri doğru sıraya sürükleyin veya okları kullanın.</p>
 
                     <div 
                         className="space-y-3 border border-gray-200 p-4 rounded-lg"
@@ -115,9 +141,9 @@ const SentenceOrdering: React.FC = () => {
                              const isCorrect = showResults && exercise.analysis.correctOrderIndices[index] === sentence.id;
                              const resultClass = showResults
                                 ? isCorrect
-                                    ? 'border-green-500 bg-green-100'
-                                    : 'border-red-500 bg-red-100'
-                                : 'border-gray-300 bg-gray-50';
+                                    ? 'border-green-500 bg-green-100 dark:bg-green-900/30'
+                                    : 'border-red-500 bg-red-100 dark:bg-red-900/30'
+                                : 'border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800';
 
                             return (
                                 <div
@@ -126,10 +152,34 @@ const SentenceOrdering: React.FC = () => {
                                     onDragStart={() => handleDragStart(index)}
                                     onDragEnter={() => handleDragEnter(index)}
                                     onDrop={handleDrop}
-                                    className={`flex items-start p-3 rounded-md border-2 transition-all duration-200 ${resultClass} ${!showResults ? 'cursor-move hover:bg-brand-secondary/10' : ''}`}
+                                    className={`flex items-center p-3 rounded-md border-2 transition-all duration-200 ${resultClass} ${!showResults ? 'cursor-move hover:bg-brand-secondary/10' : ''}`}
                                 >
                                     <span className="text-xl text-brand-primary font-bold mr-4">{index + 1}.</span>
-                                    <p className="text-slate-900 dark:text-slate-200 flex-1">{sentence.text}</p>
+                                    <p className="text-text-primary flex-1">{sentence.text}</p>
+                                     {!showResults && (
+                                        <div className="flex flex-col ml-2 sm:ml-4">
+                                            <button 
+                                                onClick={() => handleMoveSentence(index, 'up')} 
+                                                disabled={index === 0}
+                                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                aria-label={`Move sentence ${index + 1} up`}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M10 3a1 1 0 01.707.293l5 5a1 1 0 01-1.414 1.414L11 6.414V17a1 1 0 11-2 0V6.414L5.707 9.707a1 1 0 01-1.414-1.414l5-5A1 1 0 0110 3z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <button 
+                                                onClick={() => handleMoveSentence(index, 'down')} 
+                                                disabled={index === userOrderedSentences.length - 1}
+                                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                aria-label={`Move sentence ${index + 1} down`}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M10 17a1 1 0 01-.707-.293l-5-5a1 1 0 011.414-1.414L9 13.586V3a1 1 0 112 0v10.586l3.293-3.293a1 1 0 011.414 1.414l-5 5A1 1 0 0110 17z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -144,11 +194,11 @@ const SentenceOrdering: React.FC = () => {
             )}
             
             {showResults && exercise && (
-                 <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg">
+                 <div className="bg-bg-secondary p-6 rounded-lg shadow-lg">
                      <h3 className="text-xl font-bold text-green-600 mb-4">Analiz ve Açıklama</h3>
-                     <div className="bg-gray-100 p-4 rounded-md space-y-3">
-                         <h4 className="font-semibold text-slate-900 dark:text-slate-200">Doğru Sıralama ve Mantığı</h4>
-                         <p className="text-sm text-slate-500 dark:text-slate-400 whitespace-pre-wrap">{exercise.analysis.explanation}</p>
+                     <div className="bg-gray-100 dark:bg-slate-800 p-4 rounded-md space-y-3">
+                         <h4 className="font-semibold text-text-primary">Doğru Sıralama ve Mantığı</h4>
+                         <p className="text-sm text-text-secondary whitespace-pre-wrap">{exercise.analysis.explanation}</p>
                      </div>
                  </div>
             )}
