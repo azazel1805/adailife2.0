@@ -443,7 +443,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, allTabs, adaiMenuStru
             <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">
                 Hoşgeldin, {user?.displayName || user?.email?.split('@')[0] || 'Kullanıcı'}! 
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Sistemsel bakım çalışması devam ediyor. Uygulama bu süreçte tam doğru çalışmayabilir!</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Now all good!</p>
         </div>
     </div>
   );
