@@ -59,7 +59,7 @@ import { AnalyzeIcon, GamesIcon, DictionaryIcon, BasicsIcon, HandwritingConverte
 // Hooks & Types
 // --- ÖNEMLİ: Bu import yollarını kontrol edin. Eğer 'hooks' ve 'types' klasörleri App.tsx ile aynı seviyedeyse './hooks' ve './types' olmalı. ---
 import useLocalStorage from '../hooks/useLocalStorage';
-import { Tab, MockExamResultData } from './types';
+import { Tab, MockExamResultData } from '../types';
 
 type Theme = 'light' | 'dark';
 
