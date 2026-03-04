@@ -1,6 +1,27 @@
 
 
-import { GoogleGenAI, GenerateContentResponse, Chat, Type, Modality } from "@google/genai";
+type JsonSchemaType = 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object';
+
+type GenerateContentResponse = {
+    text: string;
+    candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string } }> } }>;
+};
+
+export type Chat = {
+    sendMessage: ({ message }: { message: string }) => Promise<{ text: string }>;
+    sendMessageStream: ({ message }: { message: string }) => Promise<AsyncGenerator<{ text: string }, void, unknown>>;
+};
+
+const Type = {
+    STRING: 'string' as JsonSchemaType,
+    NUMBER: 'number' as JsonSchemaType,
+    ARRAY: 'array' as JsonSchemaType,
+    OBJECT: 'object' as JsonSchemaType,
+};
+
+const Modality = {
+    AUDIO: 'audio',
+} as const;
 import { 
     HistoryItem, AnalysisResult, NewsResult, MockExamQuestion, ClozeTestResponse, PhrasalVerbOfTheDay, 
     FullStudyPlan, VocabularyItem, TranslationAnalysisResult, DialogueCompletionExercise, 
@@ -13,11 +34,112 @@ import {
 } from '../types';
 import { parseGeneratedQuestions, parseClozeTestJsonResponse } from "../utils/questionParser";
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable not set");
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || process.env.API_KEY;
+if (!OPENAI_API_KEY) {
+  throw new Error("OPENAI_API_KEY (or API_KEY) environment variable not set");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const OPENAI_CHAT_MODEL = 'gpt-4o-mini';
+const OPENAI_IMAGE_MODEL = 'gpt-image-1';
+const OPENAI_TTS_MODEL = 'gpt-4o-mini-tts';
+
+const callOpenAI = async (path: string, body: Record<string, any>) => {
+    const response = await fetch(`https://api.openai.com/v1/${path}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+    }
+
+    return response.json();
+};
+
+const extractText = (data: any): string => {
+    return data?.choices?.[0]?.message?.content ?? data?.output_text ?? '';
+};
+
+const toOpenAIContent = (contents: any): any => {
+    if (typeof contents === 'string') return contents;
+    if (Array.isArray(contents) && contents[0]?.parts) contents = contents[0];
+    const parts = contents?.parts;
+    if (!Array.isArray(parts)) return String(contents ?? '');
+    return parts.map((part: any) => {
+        if (part.text) return { type: 'text', text: part.text };
+        if (part.inlineData?.data && part.inlineData?.mimeType?.startsWith('image/')) {
+            return { type: 'image_url', image_url: { url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}` } };
+        }
+        return null;
+    }).filter(Boolean);
+};
+
+const ai = {
+    models: {
+        generateContent: async ({ contents, config }: any): Promise<GenerateContentResponse> => {
+            const schemaPrompt = config?.responseSchema
+                ? `\nReturn ONLY valid JSON that matches this schema: ${JSON.stringify(config.responseSchema)}`
+                : '';
+            const payload: any = {
+                model: OPENAI_CHAT_MODEL,
+                messages: [
+                    ...(config?.systemInstruction ? [{ role: 'system', content: config.systemInstruction }] : []),
+                    { role: 'user', content: toOpenAIContent(contents) },
+                ],
+            };
+
+            if (config?.responseMimeType === 'application/json') {
+                payload.response_format = { type: 'json_object' };
+                if (typeof payload.messages[payload.messages.length - 1].content === 'string') {
+                    payload.messages[payload.messages.length - 1].content += schemaPrompt;
+                }
+            }
+
+            const data = await callOpenAI('chat/completions', payload);
+            return { text: extractText(data) };
+        },
+        generateImages: async ({ prompt }: any) => {
+            const data = await callOpenAI('images/generations', {
+                model: OPENAI_IMAGE_MODEL,
+                prompt,
+                size: '1024x1024',
+            });
+            return { generatedImages: [{ image: { imageBytes: data?.data?.[0]?.b64_json ?? '' } }] };
+        },
+    },
+    chats: {
+        create: ({ config }: any): Chat => {
+            const history: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
+            if (config?.systemInstruction) history.push({ role: 'system', content: config.systemInstruction });
+
+            const request = async (message: string) => {
+                history.push({ role: 'user', content: message });
+                const data = await callOpenAI('chat/completions', {
+                    model: OPENAI_CHAT_MODEL,
+                    messages: history,
+                });
+                const text = extractText(data);
+                history.push({ role: 'assistant', content: text });
+                return { text };
+            };
+
+            return {
+                sendMessage: async ({ message }) => request(message),
+                sendMessageStream: async ({ message }) => {
+                    const result = await request(message);
+                    return (async function* () {
+                        yield { text: result.text };
+                    })();
+                },
+            };
+        },
+    },
+};
 
 const ANALYSIS_SCHEMA = {
   type: Type.OBJECT,
@@ -965,7 +1087,7 @@ async function* streamToAsyncIterator(stream: AsyncGenerator<GenerateContentResp
 export const analyzeQuestion = async (question: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: OPENAI_CHAT_MODEL,
             contents: question,
             config: {
                 responseMimeType: 'application/json',
@@ -983,7 +1105,7 @@ export const analyzeQuestion = async (question: string): Promise<string> => {
 export const getPhrasalVerbOfTheDay = async (): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Bana İngilizce sınavlarda sıkça çıkan, orta-zor seviyede bir "phrasal verb" ve onunla ilgili bilgileri JSON formatında ver. JSON, "phrasalVerb", "meaning" (Türkçe anlamı) ve "examples" (her biri "en" ve "tr" alanları içeren iki örnek cümle) alanlarını içermelidir.`,
             config: {
                 responseMimeType: 'application/json',
@@ -1000,7 +1122,7 @@ export const getPhrasalVerbOfTheDay = async (): Promise<string> => {
 export const getAffixOfTheDay = async (): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Provide a common English prefix or suffix for vocabulary building. The response must be a JSON object according to the schema. Include the affix with a hyphen, its type ('Prefix' or 'Suffix'), its meaning in Turkish, and 3 example words in English with their English definitions.`,
             config: {
                 responseMimeType: 'application/json',
@@ -1017,7 +1139,7 @@ export const getAffixOfTheDay = async (): Promise<string> => {
 export const getWeatherForLocation = async (lat: number, lon: number): Promise<string> => {
      try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Provide the current weather for latitude ${lat} and longitude ${lon} in a JSON object. The object must include "city" (string), "temperature" (number in Celsius), "description" (string in Turkish), and "icon" (a single emoji).`,
             config: {
                 responseMimeType: 'application/json',
@@ -1033,7 +1155,7 @@ export const getWeatherForLocation = async (lat: number, lon: number): Promise<s
 
 export const createTutorChatSession = (): Chat => {
     return ai.chats.create({
-        model: 'gemini-2.5-flash-lite',
+        model: OPENAI_CHAT_MODEL,
         config: {
             systemInstruction: "Sen 'Onur', genel İngilizce konularında uzman, sabırlı ve teşvik edici bir yapay zeka eğitmensin. Kullanıcıların sorularını net, anlaşılır ve adım adım açıklamalarla yanıtla. Karmaşık konuları basitleştir ve bolca örnek ver. Kullanıcının moralini yüksek tut ve öğrenme sürecini destekle. Cevapların her zaman Türkçe olmalı."
         }
@@ -1041,7 +1163,7 @@ export const createTutorChatSession = (): Chat => {
 };
 export const createSpeakingSimulatorSession = (scenario: Scenario): Chat => {
     return ai.chats.create({
-        model: 'gemini-2.5-flash-lite',
+        model: OPENAI_CHAT_MODEL,
         config: {
             systemInstruction: `You are an AI role-playing as a ${scenario.aiRole}. Your goal is to have a natural conversation with the user, who is playing the role of a ${scenario.userRole}. Act your part convincingly. Do not break character. Keep your responses concise and natural for a spoken conversation. Do not add conversational filler like 'Okay!' or 'Great'. Just give your response directly.`
         }
@@ -1050,7 +1172,7 @@ export const createSpeakingSimulatorSession = (scenario: Scenario): Chat => {
 
 export const createCreativeWritingSession = (format: string, start: string): Chat => {
     return ai.chats.create({
-        model: 'gemini-2.5-flash-lite',
+        model: OPENAI_CHAT_MODEL,
         config: {
             systemInstruction: `You are 'Alex', a creative writing partner. You will collaborate with the user to write a piece of creative writing IN ENGLISH. The user has chosen the format: "${format}". Their starting point, which may be keywords or a sentence in any language, is: "${start}". Your role is to take this starting point and begin writing a story IN ENGLISH. Then, continue the story from where the user leaves off, adding a few sentences or a short paragraph at a time, always IN ENGLISH. Match the user's tone and style, but maintain the language as English. Be creative and keep the story moving forward. Your responses must ONLY contain the next part of the story in English, with no conversational filler or extra text.`
         }
@@ -1061,7 +1183,7 @@ export const createCreativeWritingSession = (format: string, start: string): Cha
 export const getDictionaryEntry = async (word: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Provide a detailed dictionary entry for the English word/phrase "${word}" in JSON format according to the schema. For the turkishMeanings, provide all common meanings categorized by their part of speech (e.g., noun, verb, adjective).`,
             config: {
                 responseMimeType: 'application/json',
@@ -1078,7 +1200,7 @@ export const getDictionaryEntry = async (word: string): Promise<string> => {
 export const getTurkishToEnglishTranslation = async (word: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: OPENAI_CHAT_MODEL,
             contents: `Provide the English translations for the Turkish word "${word}". For each translation, include its part of speech and a simple example sentence in English. Respond in JSON format according to the schema.`,
             config: {
                 responseMimeType: 'application/json',
@@ -1102,7 +1224,7 @@ export const getEli5Explanation = async (word: string, entry: DictionaryEntry): 
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Explain the following English word and its meanings like I'm 5 years old. Use simple analogies and keep the explanation in Turkish. The explanation should be concise, friendly, and very easy to understand.\n\n${context}`,
         });
         return response.text.trim();
@@ -1115,7 +1237,7 @@ export const getEli5Explanation = async (word: string, entry: DictionaryEntry): 
 export const getWritingTopic = async (): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: "Generate a single, interesting English essay topic suitable for an upper-intermediate (B2/C1) learner. The topic should be a question or a statement to discuss. Respond with ONLY the topic itself, no extra text.",
         });
         return response.text.trim();
@@ -1128,7 +1250,7 @@ export const getWritingTopic = async (): Promise<string> => {
 export const generateSimilarQuiz = async (analysis: AnalysisResult, originalQuestion: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Based on the analysis of the following question, generate a 5-question mini-quiz. The new questions should be on the same topic ("${analysis.konu}") and of the same question type ("${analysis.soruTipi}") and difficulty ("${analysis.zorlukSeviyesi}"). Format the output as plain text with questions numbered 1-5, options A-E, and clearly mark the correct answer for each (e.g., "Correct answer: C").\n\n--- ORIGINAL QUESTION ---\n${originalQuestion}\n\n--- ANALYSIS ---\n${JSON.stringify(analysis, null, 2)}`
         });
         return response.text;
@@ -1142,7 +1264,7 @@ export const generateSimilarQuiz = async (analysis: AnalysisResult, originalQues
 export const analyzeReadingPassage = async (passage: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Analyze the following English passage. Provide a response in JSON format according to the schema. 
 IMPORTANT LANGUAGE RULES:
 - The 'summary' must be in Turkish.
@@ -1164,7 +1286,7 @@ Generate 3-4 multiple-choice questions based on the passage.\n\nPassage:\n${pass
 export const analyzeWrittenText = async (topic: string, text: string): Promise<string> => {
      try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Act as an expert English writing tutor. Analyze the following English essay written on the topic "${topic}". Provide feedback in JSON format according to the schema.
 
 IMPORTANT LANGUAGE RULES:
@@ -1187,7 +1309,7 @@ Essay:\n${text}`,
 export const analyzeVisualDescription = async (text: string): Promise<string> => {
      try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Act as an English writing coach. Analyze the following English description of an image. Your goal is to help the user become a more descriptive writer.
 Provide feedback in JSON format according to the schema.
 
@@ -1213,7 +1335,7 @@ Description:\n${text}`,
 export const improveParagraph = async (paragraph: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Take the following English paragraph and improve it for clarity, flow, and vocabulary. Provide the response in JSON format according to the schema. The explanation reasons must be in Turkish.\n\nParagraph:\n${paragraph}`,
             config: {
                 responseMimeType: "application/json",
@@ -1230,7 +1352,7 @@ export const improveParagraph = async (paragraph: string): Promise<string> => {
 export const generateListeningTask = async (difficulty: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Generate a short English listening task of "${difficulty}" difficulty. Provide a response in JSON format according to the schema. The task should include a script (around 4-6 sentences) and 3 multiple-choice questions about the script.`,
             config: {
                 responseMimeType: "application/json",
@@ -1247,7 +1369,7 @@ export const generateListeningTask = async (difficulty: string): Promise<string>
 export const deconstructPassage = async (passage: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Deconstruct the following English passage. For each sentence, provide a simplified version IN ENGLISH, a grammar explanation IN TURKISH, and key vocabulary with their Turkish meanings. Also, provide the main idea and author's tone for the whole passage IN ENGLISH. The response must be in JSON format according to the schema. IMPORTANT: The fields 'simplifiedSentence', 'mainIdea', and 'authorTone' MUST BE in English. The 'grammarExplanation' and the 'meaning' field for each vocabulary item MUST BE in Turkish.\n\nPassage:\n${passage}`,
             config: {
                 responseMimeType: "application/json",
@@ -1264,7 +1386,7 @@ export const deconstructPassage = async (passage: string): Promise<string> => {
 export const getNewsSummary = async (topic: string): Promise<NewsResult> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Provide a detailed, recent news summary about "${topic}". The summary should be a single, well-written paragraph in English.`,
             config: {
                 tools: [{ googleSearch: {} }],
@@ -1287,7 +1409,7 @@ export const getNewsSummary = async (topic: string): Promise<NewsResult> => {
 export const generateNewsQuestions = async (paragraph: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Based on the following news paragraph, generate a JSON object containing a list of 3 multiple-choice comprehension questions. Each question should have options and a correct answer key.\n\nParagraph:\n${paragraph}`,
             config: {
                 responseMimeType: "application/json",
@@ -1304,7 +1426,7 @@ export const generateNewsQuestions = async (paragraph: string): Promise<string> 
 export const diagramSentence = async (sentence: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Analyze the grammatical structure of the following English sentence. Break it down into its constituent parts (subject, verb, object, clauses, phrases, etc.). Provide the response in JSON format according to the schema. The descriptions for each part must be in Turkish.\n\nSentence: "${sentence}"`,
             config: {
                 responseMimeType: "application/json",
@@ -1321,7 +1443,7 @@ export const diagramSentence = async (sentence: string): Promise<string> => {
 export const analyzeParagraphCohesion = async (paragraph: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Analyze the cohesion and flow of the following English paragraph. For each sentence, identify its role, its connection to the previous sentence, and suggest improvements if any. Also, provide an overall cohesion assessment and the main idea. The response must be in JSON format according to the schema. All analysis text (role, connection, suggestion, etc.) must be in Turkish.\n\nParagraph:\n${paragraph}`,
             config: {
                 responseMimeType: "application/json",
@@ -1347,7 +1469,7 @@ ${cefrReport.skillReports.map(r => `- ${r.skill}: ${r.cefrLevel} (${r.feedback})
         const prompt = `Bir öğrencinin uygulama içi performansına, hedef tarihine ve haftalık çalışma süresine göre, ona özel, haftalara bölünmüş, etkileşimli bir çalışma planı oluştur. ${cefrReportString ? 'Plan, öğrencinin hem uygulama içi performansındaki hem de seviye tespit sınavındaki en zayıf olduğu becerilere odaklanmalı' : 'Plan, öğrencinin en zayıf olduğu becerilere odaklanmalı'} ve pratik yapmak için belirli ADAI uygulama araçlarına ('reading', 'listening', 'vocabulary', 'writing' vb.) yönlendirmelidir. Yanıtın JSON formatında ve belirtilen şemaya uygun olmalıdır. Tüm metin alanları (öneriler, görevler vb.) Türkçe olmalıdır.\n\nUygulama İçi Performans Özeti: ${JSON.stringify(performanceStats, null, 2)}${cefrReportString}\nHedef Tarih: ${targetDate}\nHaftalık Çalışma Saati: ${weeklyHours}`;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: OPENAI_CHAT_MODEL,
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1381,7 +1503,7 @@ export const extractExamFromPDF = async (file: File): Promise<string> => {
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: {
                 parts: [
                     filePart,
@@ -1403,7 +1525,7 @@ export const extractExamFromPDF = async (file: File): Promise<string> => {
 export const generateSentenceOrderingExercise = async (difficulty: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Create a sentence ordering exercise of "${difficulty}" difficulty. Provide a response in JSON format according to the schema. The response should include a list of 5 jumbled English sentences and an analysis object containing the correct order (as an array of original indices from 0 to 4) and a detailed Turkish explanation of the logic behind the correct order (e.g., pronoun references, chronological order, topic sentences).`,
             config: {
                 responseMimeType: "application/json",
@@ -1424,7 +1546,7 @@ export const analyzeConversationForReport = async (scenario: Scenario, conversat
     
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: OPENAI_CHAT_MODEL,
             contents: `Please act as an expert English language tutor. Analyze the following conversation transcript from a role-playing simulation. Your response must be in JSON format according to the provided schema. All feedback, reasoning, and explanations must be in ENGLISH.
 
 **Scenario Details:**
@@ -1452,7 +1574,7 @@ Provide a detailed performance report based on the transcript and the user's obj
 export const deconstructPhrasalVerb = async (phrasalVerb: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Deconstruct the phrasal verb "${phrasalVerb}". Provide the response in JSON format. Explain the literal meaning of the main verb and the particle separately. Then, explain the idiomatic meaning and how it's derived. Provide 3 example sentences with Turkish translations. All explanations and meanings must be in Turkish.`,
             config: {
                 responseMimeType: "application/json",
@@ -1470,7 +1592,7 @@ export const generateVocabularyStory = async (words: VocabularyItem[]): Promise<
     const wordList = words.map(item => `"${item.word}" (meaning: ${item.meaning})`).join(', ');
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Write a short, simple, and coherent story in English (about 100-150 words) that correctly uses all of the following words: ${wordList}. The story should be easy to understand for an intermediate English learner. Respond with ONLY the story text, no titles or extra explanations.`,
         });
         return response.text.trim();
@@ -1483,7 +1605,7 @@ export const generateVocabularyStory = async (words: VocabularyItem[]): Promise<
 export const analyzeAndTranslateSentence = async (sentence: string, direction: 'tr_to_en' | 'en_to_tr'): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Analyze and translate the following sentence: "${sentence}". The translation direction is ${direction}. Provide a response in JSON format according to the schema. The translations themselves MUST be in the target language. All other explanatory text, such as analysis and rationale, MUST be in Turkish.`,
             config: {
                 responseMimeType: "application/json",
@@ -1500,7 +1622,7 @@ export const analyzeAndTranslateSentence = async (sentence: string, direction: '
 export const generateDialogueExercise = async (difficulty: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Create an interactive dialogue completion exercise of "${difficulty}" difficulty. The response must be a JSON object according to the schema. The exercise should present a situation, a final line from a speaker in a dialogue, and five options for the preceding line. Provide a detailed analysis explaining why the correct option fits and why the others are wrong. All text (situation, dialogue, options, analysis) must be in English.`,
             config: {
                 responseMimeType: "application/json",
@@ -1518,7 +1640,7 @@ export const generateDialogueExercise = async (difficulty: string): Promise<stri
 export const analyzePragmatics = async (text: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Analyze the pragmatics of the following English text: "${text}". The response must be a JSON object matching the schema.
 
 IMPORTANT LANGUAGE RULES:
@@ -1549,7 +1671,7 @@ export const identifyObjectsInImage = async (base64Image: string, mimeType: stri
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: { parts: [imagePart, textPart] },
             config: {
                 responseMimeType: 'application/json',
@@ -1568,7 +1690,7 @@ export const generateCrossword = async (words: VocabularyItem[]): Promise<string
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: OPENAI_CHAT_MODEL,
             contents: `Create a compact crossword puzzle using some or all of the following English words. The clues must be their corresponding Turkish meanings. The puzzle should be solvable and well-connected. The output must be a JSON object that strictly follows the provided schema. The grid should use single uppercase letters for answers and 'null' for empty cells. The grid must be a rectangular 2D array. The clue numbers should be assigned correctly based on the grid layout. \n\nWords and Meanings:\n{${wordList}}`,
             config: {
                 responseMimeType: "application/json",
@@ -1588,7 +1710,7 @@ export const generateGrammarGapsStory = async (difficulty: string): Promise<stri
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Create a short story for an English learner. The story's language complexity should be ${complexity}. The story must contain between ${placeholderCount} placeholders. Replace key words (nouns, verbs, adjectives, adverbs) with placeholders in the format [PART_OF_SPEECH: optional hint] or [PART_OF_SPEECH]. For example: [NOUN], [VERB: past tense], [ADJECTIVE: color]. Do not use markdown. Respond with only the story text containing the placeholders.`,
         });
         return response.text.trim();
@@ -1601,7 +1723,7 @@ export const generateGrammarGapsStory = async (difficulty: string): Promise<stri
 export const generateConceptWeaverWords = async (): Promise<{ word: string, meaning: string }[]> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: OPENAI_CHAT_MODEL,
             contents: "Generate 3 random, unrelated, intermediate-level English nouns or verbs. For each word, provide its most common Turkish meaning. Provide the response as a JSON array of 3 objects, where each object has a 'word' (string) and 'meaning' (string) property. Example: [{\"word\": \"Bicycle\", \"meaning\": \"Bisiklet\"}, {\"word\": \"Moon\", \"meaning\": \"Ay\"}, {\"word\": \"Cheese\", \"meaning\": \"Peynir\"}]",
             config: {
                 responseMimeType: "application/json",
@@ -1632,7 +1754,7 @@ export const generateConceptWeaverWords = async (): Promise<{ word: string, mean
 export const analyzeConceptWeaverStory = async (words: string[], story: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: OPENAI_CHAT_MODEL,
             contents: `Act as an English writing coach. Analyze the following short story written by a user. The user was challenged to use these three words: ${JSON.stringify(words)}.
 Your analysis must be in JSON format according to the schema.
 Evaluate the story based on grammar, vocabulary, fluency, and how creatively the given words were used. All feedback text (overall feedback, explanations, reasons, creativity feedback) must be in Turkish.
@@ -1654,7 +1776,7 @@ Story:
 export const getGrammarTopicDetails = async (topic: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Generate an extensive(covering all deteils) and interactive grammar lesson for the topic: "${topic}". The entire response must be in JSON format according to the schema. All explanations must be in Turkish. The examples and questions should be in English.`,
             config: {
                 responseMimeType: 'application/json',
@@ -1671,7 +1793,7 @@ export const getGrammarTopicDetails = async (topic: string): Promise<string> => 
 export const checkUserGrammarSentence = async (sentence: string, rule: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `A user is practicing the grammar rule "${rule}". Their sentence is: "${sentence}". Please check if the sentence is grammatically correct AND correctly applies the rule. Provide feedback in JSON format according to the schema. The feedback must be in Turkish.`,
             config: {
                 responseMimeType: 'application/json',
@@ -1688,7 +1810,7 @@ export const checkUserGrammarSentence = async (sentence: string, rule: string): 
 export const generatePlacementTest = async (): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Generate a comprehensive CEFR placement test in English. The test must cover Grammar, Listening, Reading, and Writing skills, progressing in difficulty from A2 to C1 level. The output must be a JSON object following the schema.
 - Grammar: 20 multiple-choice questions.
 - Listening: A short script (6-8 sentences) and 4 multiple-choice questions.
@@ -1723,7 +1845,7 @@ ${JSON.stringify(userAnswers, null, 2)}
 `;
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -1740,7 +1862,7 @@ ${JSON.stringify(userAnswers, null, 2)}
 export const generateEssayOutline = async (essayType: string, topic: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Create a detailed essay outline for an '${essayType}' essay on the topic: "${topic}". The outline should include an introduction with a thesis statement, at least three body paragraphs with main points and supporting details, and a conclusion. Format the output clearly using headings and bullet points.`,
         });
         return response.text.trim();
@@ -1753,7 +1875,7 @@ export const generateEssayOutline = async (essayType: string, topic: string): Pr
 export const writeFullEssayFromOutline = async (topic: string, outline: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-lite',
+            model: OPENAI_CHAT_MODEL,
             contents: `Write a complete, well-structured essay on the topic "${topic}" by following this exact outline:\n\n--- OUTLINE ---\n${outline}\n\n--- END OUTLINE ---\n\nThe essay should be approximately 400-500 words long. Ensure smooth transitions between paragraphs.`,
         });
         return response.text.trim();
@@ -1787,7 +1909,7 @@ export const convertImageToText = async (file: File): Promise<string> => {
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: OPENAI_CHAT_MODEL,
             contents: { parts: [imagePart, textPart] },
         });
         return response.text.trim();
@@ -1799,27 +1921,32 @@ export const convertImageToText = async (file: File): Promise<string> => {
 
 export const generatePodcastAudio = async (script: string, voiceName: string, rate: number, pitch: number): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-preview-tts",
-            contents: [{ parts: [{ text: script }] }],
-            config: {
-                responseModalities: [Modality.AUDIO],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: voiceName },
-                    },
-                    // FIX: The correct property names for speech rate and pitch are `speakingRate` and `pitch`.
-                    speakingRate: rate,
-                    pitch: pitch,
-                },
+        const response = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
             },
+            body: JSON.stringify({
+                model: OPENAI_TTS_MODEL,
+                voice: voiceName.toLowerCase(),
+                input: script,
+                format: 'mp3',
+                speed: Math.max(0.25, Math.min(4, rate + (pitch - 1) * 0.1)),
+            }),
         });
-        
-        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (!base64Audio) {
-            throw new Error("No audio data received from API. The script might be too short or contain unsupported characters.");
+
+        if (!response.ok) {
+            throw new Error(`TTS request failed with status ${response.status}`);
         }
-        return base64Audio;
+
+        const audioBuffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(audioBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
 
     } catch (error) {
         console.error("Error generating podcast audio:", error);
@@ -1829,7 +1956,7 @@ export const generatePodcastAudio = async (script: string, voiceName: string, ra
 
 export const listTTSVoices = async (): Promise<TTSVoice[]> => {
     try {
-        // FIX: The `ai.models.listVoices` method does not exist in the @google/genai SDK.
+        // FIX: The `ai.models.listVoices` is not implemented in this OpenAI adapter.
         // Replaced the incorrect API call with a hardcoded list of known available voices for the TTS model.
         return Promise.resolve([
             { name: "Zephyr" },
