@@ -2,19 +2,27 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# ADAI Next.js Uygulaması
 
-This contains everything you need to run your app locally.
+Proje Vite'dan Next.js'e taşındı.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1cfNzFlBYjHShYIlcYY2OZ0_NDdEVXUQG
+## Çalıştırma
 
-## Run Locally
+**Gereksinim:** Node.js
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
+1. Bağımlılıkları kurun:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. `.env.local` dosyasında gerekli değişkenleri tanımlayın:
+   - `GEMINI_API_KEY`
+   - `NEXT_PUBLIC_FIREBASE_API_KEY`
+   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - `NEXT_PUBLIC_FIREBASE_APP_ID`
+3. Geliştirme sunucusunu başlatın:
    `npm run dev`
+4. Üretim build'i alın:
+   `npm run build`
+5. Üretimde çalıştırın:
+   `npm run start`

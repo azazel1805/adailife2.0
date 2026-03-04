@@ -7,48 +7,48 @@ import { HistoryProvider } from '../context/HistoryContext';
 import { usePdfExam } from '../context/PdfExamContext'; 
 
 // Pages
-import Dashboard from '../pages/Dashboard';
-import QuestionAnalyzer from '../pages/QuestionAnalyzer';
-import AITutor from '../pages/AITutor';
-import Dictionary from '../pages/Dictionary';
-import History from '../pages/History';
-import LoginPage from '../pages/LoginPage';
-import SignUpPage from '../pages/SignUpPage';
-import ReadingPractice from '../pages/ReadingPractice';
-import WritingAssistant from '../pages/WritingAssistant';
-import VocabularyTrainer from '../pages/VocabularyTrainer';
-import ListeningPractice from '../pages/ListeningPractice';
-import PassageDeconstruction from '../pages/PassageDeconstruction';
-import NewsReader from '../pages/NewsReader';
-import ParagraphCohesionAnalyzer from '../pages/ParagraphCohesionAnalyzer';
-import SentenceDiagrammer from '../pages/SentenceDiagrammer';
-import StudyPlanner from '../pages/StudyPlanner';
-import PDFImporter from '../pages/PDFImporter';
-import VocabularyStoryWeaver from '../pages/VocabularyStoryWeaver';
-import SkillTree from '../pages/SkillTree';
-import SentenceOrdering from '../pages/SentenceOrdering';
-import SpeakingSimulator from '../pages/SpeakingSimulator';
-import PhrasalVerbDeconstructor from '../pages/PhrasalVerbDeconstructor';
-import AdminPage from '../pages/AdminPage';
-import TranslationAnalyst from '../pages/TranslationAnalyst';
-import DialogueCompletion from '../pages/DialogueCompletion';
-import VisualReadingTool from '../pages/VisualReadingTool';
-import CreativeWritingPartner from '../pages/CreativeWritingPartner';
-import PragmaticAnalysisTool from '../pages/PragmaticAnalysisTool';
-import VisualDictionary from '../pages/VisualDictionary';
-import GrammarLibrary from '../pages/GrammarLibrary';
-import Tenses from '../pages/Tenses';
-import Crossword from '../pages/Crossword';
-import GrammarGaps from '../pages/GrammarGaps';
-import Hangman from '../pages/Hangman';
-import WordSprint from '../pages/WordSprint';
-import ConceptWeaver from '../pages/ConceptWeaver';
-import PlacementTest from '../pages/PlacementTest';
-import EssayOutliner from '../pages/EssayOutliner';
-import Basics from '../pages/Basics';
-import HandwritingConverter from '../pages/HandwritingConverter';
-import PhysicalDescriptionTool from '../pages/PhysicalDescriptionTool';
-import PodcastMaker from '../pages/PodcastMaker';
+import Dashboard from '../features/Dashboard';
+import QuestionAnalyzer from '../features/QuestionAnalyzer';
+import AITutor from '../features/AITutor';
+import Dictionary from '../features/Dictionary';
+import History from '../features/History';
+import LoginPage from '../features/LoginPage';
+import SignUpPage from '../features/SignUpPage';
+import ReadingPractice from '../features/ReadingPractice';
+import WritingAssistant from '../features/WritingAssistant';
+import VocabularyTrainer from '../features/VocabularyTrainer';
+import ListeningPractice from '../features/ListeningPractice';
+import PassageDeconstruction from '../features/PassageDeconstruction';
+import NewsReader from '../features/NewsReader';
+import ParagraphCohesionAnalyzer from '../features/ParagraphCohesionAnalyzer';
+import SentenceDiagrammer from '../features/SentenceDiagrammer';
+import StudyPlanner from '../features/StudyPlanner';
+import PDFImporter from '../features/PDFImporter';
+import VocabularyStoryWeaver from '../features/VocabularyStoryWeaver';
+import SkillTree from '../features/SkillTree';
+import SentenceOrdering from '../features/SentenceOrdering';
+import SpeakingSimulator from '../features/SpeakingSimulator';
+import PhrasalVerbDeconstructor from '../features/PhrasalVerbDeconstructor';
+import AdminPage from '../features/AdminPage';
+import TranslationAnalyst from '../features/TranslationAnalyst';
+import DialogueCompletion from '../features/DialogueCompletion';
+import VisualReadingTool from '../features/VisualReadingTool';
+import CreativeWritingPartner from '../features/CreativeWritingPartner';
+import PragmaticAnalysisTool from '../features/PragmaticAnalysisTool';
+import VisualDictionary from '../features/VisualDictionary';
+import GrammarLibrary from '../features/GrammarLibrary';
+import Tenses from '../features/Tenses';
+import Crossword from '../features/Crossword';
+import GrammarGaps from '../features/GrammarGaps';
+import Hangman from '../features/Hangman';
+import WordSprint from '../features/WordSprint';
+import ConceptWeaver from '../features/ConceptWeaver';
+import PlacementTest from '../features/PlacementTest';
+import EssayOutliner from '../features/EssayOutliner';
+import Basics from '../features/Basics';
+import HandwritingConverter from '../features/HandwritingConverter';
+import PhysicalDescriptionTool from '../features/PhysicalDescriptionTool';
+import PodcastMaker from '../features/PodcastMaker';
 
 
 // Components
@@ -59,7 +59,7 @@ import { AnalyzeIcon, GamesIcon, DictionaryIcon, BasicsIcon, HandwritingConverte
 // Hooks & Types
 // --- ÖNEMLİ: Bu import yollarını kontrol edin. Eğer 'hooks' ve 'types' klasörleri App.tsx ile aynı seviyedeyse './hooks' ve './types' olmalı. ---
 import useLocalStorage from '../hooks/useLocalStorage';
-import { Tab, MockExamResultData } from './types';
+import { Tab, MockExamResultData } from '../types';
 
 type Theme = 'light' | 'dark';
 
