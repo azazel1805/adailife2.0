@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Chat } from '@google/genai';
+import type { Chat } from '../services/geminiService';
 import { analyzeConversationForReport, createSpeakingSimulatorSession } from '../services/geminiService';
 import { Scenario, PerformanceReport, SimulatorChatMessage } from '../types';
 import Loader from '../components/Loader';

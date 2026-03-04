@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Chat } from '@google/genai';
+import type { Chat } from '../services/geminiService';
 import { createCreativeWritingSession } from '../services/geminiService';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
